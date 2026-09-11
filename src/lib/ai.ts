@@ -5,9 +5,10 @@ import type {
 } from "@/types/project";
 import {
   QAResponseSchema,
-  TechStackResponseSchema,
+  TechStackOptionsSchema,
   NodeTreeSchema,
   type QAResponse,
+  type TechStackOptions,
 } from "./ai-schemas";
 
 const AI_BASE_URL = process.env.AI_BASE_URL || "";
@@ -24,6 +25,7 @@ async function chat(system: string, prompt: string): Promise<string> {
     },
     body: JSON.stringify({
       model: MODEL_ID,
+      stream: false,
       messages: [
         { role: "system", content: system },
         { role: "user", content: prompt },
@@ -113,12 +115,12 @@ Respond with JSON matching this schema:
   return QAResponseSchema.parse(extractJson(text));
 }
 
-/** Fase 3: recommend tech stack based on idea, answers, and scale */
+/** Fase 3: recommend tech stack options per category */
 export async function generateTechStack(
   abstractIdea: string,
   answers: { question: string; value: string | string[] }[],
   scale: ProjectScale,
-): Promise<TechStackItem[]> {
+): Promise<TechStackOptions> {
   const answerText = answers
     .map(
       (a) =>
@@ -127,7 +129,7 @@ export async function generateTechStack(
     .join("\n");
   const text = await chat(
     `You are a senior software architect. You recommend technology stacks for software projects.\n\n${JSON_ONLY}`,
-    `Recommend a tech stack for this project.
+    `Recommend technology options for this project. For each category, provide 2-4 realistic options sorted by recommendation.
 
 Project idea:
 ${abstractIdea}
@@ -137,16 +139,21 @@ Scale: ${scale}
 User answers:
 ${answerText}
 
-Recommend appropriate technologies for frontend, backend, database, and deployment. Consider the project scale.
+IMPORTANT:
+- If a project does NOT need a category (e.g., a calculator doesn't need backend/database/deployment), return an empty array [] for that category.
+- Always include the best recommendation first.
+- Frontend is almost always needed.
+- Consider project scale: weekend projects may not need deployment infrastructure.
 
-Respond with JSON array matching this schema:
-[
-  { "category": "string", "name": "string", "reason": "string" }
-]`,
+Respond with JSON matching this schema:
+{
+  "frontend": ["React", "Next.js", "Vue.js"],
+  "backend": ["Node.js + Express", "Python FastAPI"],
+  "database": ["PostgreSQL", "MongoDB"],
+  "deployment": ["Vercel", "Docker + AWS"]
+}`,
   );
-  const parsed = extractJson(text);
-  const result = TechStackResponseSchema.parse({ stack: parsed });
-  return result.stack;
+  return TechStackOptionsSchema.parse(extractJson(text));
 }
 
 /** Fase 4: generate architecture mindmap as React Flow node tree */

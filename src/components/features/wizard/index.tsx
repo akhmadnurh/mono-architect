@@ -5,6 +5,7 @@ import { StepIdea } from "./step-idea";
 import { StepQuestions } from "./step-questions";
 import { StepTechStack } from "./step-techstack";
 import { StepArchitecture } from "./step-architecture";
+import { StepExport } from "./step-export";
 
 const STEPS: { label: string; step: WizardStep }[] = [
   { label: "Ide & Skala", step: 1 },
@@ -55,6 +56,8 @@ function StepContent({ step }: { step: WizardStep }) {
       return <StepTechStack />;
     case 4:
       return <StepArchitecture />;
+    case 5:
+      return <StepExport />;
     default:
       return (
         <div className="flex items-center justify-center rounded-lg border border-dashed p-16 text-muted-foreground">

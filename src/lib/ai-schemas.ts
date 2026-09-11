@@ -19,6 +19,20 @@ export const QAResponseSchema = z.object({
 });
 
 // --- Tech Stack (Fase 3) ---
+export const TechStackOptionsSchema = z.object({
+  frontend: z.array(z.string()).describe("Frontend technology options"),
+  backend: z
+    .array(z.string())
+    .describe("Backend technology options (empty if not needed)"),
+  database: z
+    .array(z.string())
+    .describe("Database options (empty if not needed)"),
+  deployment: z
+    .array(z.string())
+    .describe("Deployment options (empty if not needed)"),
+});
+
+// Legacy flat format for downstream compatibility
 export const TechStackItemSchema = z.object({
   category: z
     .string()
@@ -45,7 +59,7 @@ export const EdgeSchema = z.object({
   id: z.string(),
   source: z.string(),
   target: z.string(),
-  label: z.string().optional(),
+  label: z.string().nullable().optional(),
 });
 
 export const NodeTreeSchema = z.object({
@@ -56,6 +70,7 @@ export const NodeTreeSchema = z.object({
 // --- Inferred types ---
 export type Question = z.infer<typeof QuestionSchema>;
 export type QAResponse = z.infer<typeof QAResponseSchema>;
+export type TechStackOptions = z.infer<typeof TechStackOptionsSchema>;
 export type TechStackItemZod = z.infer<typeof TechStackItemSchema>;
 export type TechStackResponse = z.infer<typeof TechStackResponseSchema>;
 export type NodeTreeResponse = z.infer<typeof NodeTreeSchema>;

@@ -42,3 +42,10 @@ next-env.d.ts
 
 PRD.md
 TASKS.md
+
+# Graphify - local-only files
+graphify-out/manifest.json
+graphify-out/cost.json
+graphify-out/*.log
+.graphify_python
+.graphify_uncached.txt

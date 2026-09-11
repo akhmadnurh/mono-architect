@@ -3,23 +3,33 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useWizardStore } from "@/store/wizard";
-import type { TechStackItem, ProjectScale } from "@/types/project";
+import type { TechStackItem } from "@/types/project";
+import type { TechStackOptions } from "@/lib/ai-schemas";
+
+type Selections = Record<string, string | null>;
+
+const CATEGORIES = [
+  { key: "frontend", label: "Frontend", icon: "🖥️" },
+  { key: "backend", label: "Backend", icon: "⚙️" },
+  { key: "database", label: "Database", icon: "🗄️" },
+  { key: "deployment", label: "Deployment", icon: "🚀" },
+] as const;
 
 export function StepTechStack() {
-  const {
-    abstractIdea,
-    answers,
-    scale,
-    techStack,
-    setTechStack,
-    nextStep,
-    prevStep,
-  } = useWizardStore();
+  const { abstractIdea, answers, scale, setTechStack, nextStep, prevStep } =
+    useWizardStore();
   const [loading, setLoading] = useState(false);
-  const [selected, setSelected] = useState<Set<string>>(
-    () => new Set(techStack.map((t) => `${t.category}:${t.name}`)),
-  );
+  const [options, setOptions] = useState<TechStackOptions | null>(null);
+  const [selections, setSelections] = useState<Selections>({});
 
   const handleGenerate = async () => {
     setLoading(true);
@@ -37,16 +47,14 @@ export function StepTechStack() {
         }),
       });
       if (!res.ok) throw new Error(await res.text());
-      const data = await res.json();
-      setTechStack(data);
-      setSelected(
-        new Set(
-          data.map(
-            (t: { category: string; name: string }) =>
-              `${t.category}:${t.name}`,
-          ),
-        ),
-      );
+      const data: TechStackOptions = await res.json();
+      setOptions(data);
+      // Auto-select first (AI-recommended) per category
+      const init: Selections = {};
+      for (const cat of Object.keys(data) as Array<keyof TechStackOptions>) {
+        init[cat] = data[cat].length > 0 ? data[cat][0] : null;
+      }
+      setSelections(init);
     } catch (err) {
       console.error("Failed to generate tech stack:", err);
     } finally {
@@ -54,34 +62,39 @@ export function StepTechStack() {
     }
   };
 
-  const toggle = (key: string) => {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
+  const handleSelect = (category: string, value: string) => {
+    setSelections((prev) => ({
+      ...prev,
+      [category]: value === "__none__" ? null : value,
+    }));
   };
 
   const handleProceed = () => {
-    const filtered = techStack.filter((t) =>
-      selected.has(`${t.category}:${t.name}`),
-    );
-    setTechStack(filtered);
+    if (!options) return;
+    const stack: TechStackItem[] = [];
+    for (const cat of CATEGORIES) {
+      const picked = selections[cat.key];
+      if (picked) {
+        stack.push({ category: cat.key, name: picked, reason: "" });
+      }
+    }
+    setTechStack(stack);
     nextStep();
   };
+
+  const hasSelections = Object.values(selections).some(Boolean);
 
   return (
     <Card className="w-full max-w-2xl">
       <CardHeader>
         <CardTitle className="text-xl">Tech Stack</CardTitle>
         <p className="text-sm text-muted-foreground">
-          AI merekomendasikan teknologi yang sesuai. Pilih yang ingin Anda
-          gunakan.
+          Pilih teknologi untuk setiap kategori. Pilih &quot;None&quot; jika
+          tidak diperlukan.
         </p>
       </CardHeader>
       <CardContent className="space-y-6">
-        {techStack.length === 0 && (
+        {!options && (
           <Button
             onClick={handleGenerate}
             disabled={loading}
@@ -91,37 +104,48 @@ export function StepTechStack() {
           </Button>
         )}
 
-        {techStack.length > 0 && (
-          <div className="space-y-3">
-            {techStack.map((item) => {
-              const key = `${item.category}:${item.name}`;
-              const isActive = selected.has(key);
+        {options && (
+          <div className="space-y-4">
+            {CATEGORIES.map((cat) => {
+              const items = options[cat.key] ?? [];
+              const hasOptions = items.length > 0;
               return (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => toggle(key)}
-                  className={`w-full rounded-lg border p-4 text-left transition-all ${
-                    isActive
-                      ? "border-primary bg-primary/5 ring-2 ring-primary/20"
-                      : "border-border opacity-60 hover:border-primary/50"
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-medium uppercase text-muted-foreground">
-                      {item.category}
-                    </span>
-                    <span
-                      className={`text-xs ${isActive ? "text-primary" : "text-muted-foreground"}`}
-                    >
-                      {isActive ? "✓ Selected" : "Click to select"}
-                    </span>
-                  </div>
-                  <p className="mt-1 text-sm font-medium">{item.name}</p>
-                  <p className="mt-0.5 text-xs text-muted-foreground">
-                    {item.reason}
-                  </p>
-                </button>
+                <div key={cat.key} className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <span>{cat.icon}</span>
+                    <span>{cat.label}</span>
+                    {!hasOptions && (
+                      <span className="text-xs text-muted-foreground">
+                        (tidak diperlukan)
+                      </span>
+                    )}
+                  </Label>
+                  <Select
+                    value={selections[cat.key] ?? "__none__"}
+                    onValueChange={(v) =>
+                      handleSelect(cat.key, v ?? "__none__")
+                    }
+                    disabled={!hasOptions}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue
+                        placeholder={
+                          hasOptions ? "Pilih teknologi…" : "Tidak diperlukan"
+                        }
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {hasOptions && (
+                        <SelectItem value="__none__">None</SelectItem>
+                      )}
+                      {items.map((name) => (
+                        <SelectItem key={name} value={name}>
+                          {name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               );
             })}
           </div>
@@ -131,7 +155,7 @@ export function StepTechStack() {
           <Button variant="outline" onClick={prevStep}>
             ← Kembali
           </Button>
-          <Button onClick={handleProceed} disabled={selected.size === 0}>
+          <Button onClick={handleProceed} disabled={!hasSelections}>
             Lanjut →
           </Button>
         </div>

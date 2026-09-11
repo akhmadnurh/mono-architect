@@ -29,7 +29,7 @@ export interface ProjectEdge {
   id: string;
   source: string;
   target: string;
-  label?: string;
+  label?: string | null;
 }
 
 export interface ProjectNodeTree {
