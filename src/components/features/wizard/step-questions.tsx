@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,13 +15,14 @@ export function StepQuestions() {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const autoFetched = useRef(false);
   const [values, setValues] = useState<Record<string, string>>(() => {
     const map: Record<string, string> = {};
     for (const a of answers) map[a.questionId] = String(a.value);
     return map;
   });
 
-  const handleGenerate = async () => {
+  const handleGenerate = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -40,11 +41,20 @@ export function StepQuestions() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [abstractIdea]);
+
+  // Auto-trigger: fetch on mount when questions are empty
+  useEffect(() => {
+    if (questions.length === 0 && !loading && !autoFetched.current) {
+      autoFetched.current = true;
+      handleGenerate();
+    }
+  }, [questions.length, loading, handleGenerate]);
 
   const handleProceed = () => {
     const mapped: ProjectAnswer[] = questions.map((q) => ({
       questionId: q.questionId,
+      question: q.question,
       value: values[q.questionId] ?? "",
     }));
     setAnswers(mapped);
@@ -70,13 +80,34 @@ export function StepQuestions() {
           </div>
         )}
 
-        {questions.length === 0 && (
+        {questions.length === 0 && !error && (
+          <div className="space-y-4">
+            {loading ? (
+              <div className="space-y-4">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="space-y-2">
+                    <div className="h-4 w-3/4 animate-pulse rounded bg-muted" />
+                    <div className="h-9 w-full animate-pulse rounded-md bg-muted" />
+                  </div>
+                ))}
+                <p className="text-sm text-muted-foreground">
+                  Menghasilkan pertanyaan…
+                </p>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Menyiapkan pertanyaan…
+              </p>
+            )}
+          </div>
+        )}
+        {questions.length === 0 && error && (
           <Button
             onClick={handleGenerate}
             disabled={loading}
             className="w-full"
           >
-            {loading ? "Menghasilkan pertanyaan…" : "Generate Pertanyaan"}
+            {loading ? "Menghasilkan pertanyaan…" : "Coba Lagi"}
           </Button>
         )}
 

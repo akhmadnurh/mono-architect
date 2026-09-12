@@ -7,6 +7,7 @@ export type ProjectScale = (typeof PROJECT_SCALES)[number];
 // --- Q&A answers ---
 export interface ProjectAnswer {
   questionId: string;
+  question?: string;
   value: string | string[];
 }
 
@@ -17,11 +18,13 @@ export interface TechStackItem {
   reason: string;
 }
 
+export type TechStackMode = "ai" | "manual";
+
 // --- React Flow node tree ---
 export interface ProjectNode {
   id: string;
   type?: string;
-  position: { x: number; y: number };
+  position?: { x: number; y: number };
   data: Record<string, unknown>;
 }
 
@@ -35,6 +38,12 @@ export interface ProjectEdge {
 export interface ProjectNodeTree {
   nodes: ProjectNode[];
   edges: ProjectEdge[];
+}
+
+// --- Data model entities (for PRD) ---
+export interface ProjectEntity {
+  name: string;
+  description?: string;
 }
 
 // --- Prisma row helpers ---

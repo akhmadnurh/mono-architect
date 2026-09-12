@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import {
   ReactFlow,
   Background,
@@ -15,69 +15,31 @@ import "@xyflow/react/dist/style.css";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useWizardStore } from "@/store/wizard";
-import type { ProjectScale, TechStackItem } from "@/types/project";
-
-const NODE_COLORS: Record<string, string> = {
-  root: "#6366f1",
-  feature: "#3b82f6",
-  module: "#22c55e",
-  note: "#f59e0b",
-};
-
-function toRFNodes(
-  nodes: {
-    id: string;
-    type?: string;
-    position: { x: number; y: number };
-    data: Record<string, unknown>;
-  }[],
-): Node[] {
-  return nodes.map((n) => ({
-    id: n.id,
-    position: n.position,
-    data: { label: (n.data.label as string) ?? n.id },
-    type: "default",
-    style: {
-      background: NODE_COLORS[n.type ?? "note"] ?? "#94a3b8",
-      color: "#fff",
-      borderRadius: 8,
-      padding: "8px 16px",
-      fontSize: 13,
-      fontWeight: 500,
-    },
-  }));
-}
-
-function toRFEdges(
-  edges: { id: string; source: string; target: string; label?: string }[],
-): Edge[] {
-  return edges.map((e) => ({
-    id: e.id,
-    source: e.source,
-    target: e.target,
-    label: e.label,
-    animated: true,
-    style: { stroke: "#94a3b8" },
-  }));
-}
+import { layoutGraph } from "@/lib/dagre-layout";
 
 export function StepArchitecture() {
   const {
     abstractIdea,
     answers,
     techStack,
+    techStackMode,
     scale,
-    nodeTree,
     setNodeTree,
+    setTechStack,
     prevStep,
   } = useWizardStore();
-  const [loading, setLoading] = useState(false);
+  const autoFetched = useRef(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
 
-  const handleGenerate = useCallback(async () => {
-    setLoading(true);
+  const fetchArchitecture = useCallback(async () => {
+    setIsLoading(true);
+    setErrorMsg(null);
+    setNodes([]);
+    setEdges([]);
     try {
       const res = await fetch("/api/generate/node-tree", {
         method: "POST",
@@ -88,26 +50,130 @@ export function StepArchitecture() {
             question: a.questionId,
             value: a.value,
           })),
-          techStack,
+          techStack: techStackMode === "ai" ? [] : techStack,
           scale,
         }),
       });
-      if (!res.ok) throw new Error(await res.text());
-      const tree = await res.json();
-      setNodeTree(tree);
-    } catch (err) {
-      console.error("Failed to generate node tree:", err);
-    } finally {
-      setLoading(false);
-    }
-  }, [abstractIdea, answers, techStack, scale, setNodeTree]);
+      if (!res.ok) throw new Error(`API ${res.status}: ${await res.text()}`);
 
-  useEffect(() => {
-    if (nodeTree) {
-      setNodes(toRFNodes(nodeTree.nodes));
-      setEdges(toRFEdges(nodeTree.edges));
+      const text = await res.text();
+
+      // Extract JSON from the response (handles markdown fences)
+      const trimmed = text.trim();
+      const fenceMatch = trimmed.match(/```(?:json)?\s*\n?([\s\S]*?)```/);
+      const raw = fenceMatch ? fenceMatch[1].trim() : trimmed;
+      const jsonStart = raw.search(/[[{]/);
+      if (jsonStart === -1) throw new Error("No JSON found in AI response");
+
+      let depth = 0;
+      let inStr = false;
+      let esc = false;
+      let jsonEnd = jsonStart;
+      for (let i = jsonStart; i < raw.length; i++) {
+        const ch = raw[i];
+        if (esc) {
+          esc = false;
+          continue;
+        }
+        if (ch === "\\") {
+          esc = true;
+          continue;
+        }
+        if (ch === '"') {
+          inStr = !inStr;
+          continue;
+        }
+        if (inStr) continue;
+        if (ch === "{" || ch === "[") depth++;
+        if (ch === "}" || ch === "]") depth--;
+        if (depth === 0) {
+          jsonEnd = i + 1;
+          break;
+        }
+      }
+
+      const parsed = JSON.parse(raw.slice(jsonStart, jsonEnd)) as {
+        nodes?: Array<{
+          id?: string;
+          type?: string;
+          data?: Record<string, unknown>;
+        }>;
+        edges?: Array<{
+          id?: string;
+          source?: string;
+          target?: string;
+          label?: string | null;
+        }>;
+        techStack?: Array<{
+          category?: string;
+          name?: string;
+          reason?: string;
+        }>;
+      };
+
+      if (!parsed.nodes?.length) throw new Error("AI returned empty node tree");
+
+      const rawNodes = parsed.nodes
+        .filter((n) => n?.id != null)
+        .map((n) => ({
+          id: n.id!,
+          type: n.type != null ? String(n.type) : undefined,
+          data: (n.data ?? {}) as Record<string, unknown>,
+        }));
+
+      const rawEdges = (parsed.edges ?? [])
+        .filter((e) => e?.id != null)
+        .map((e) => ({
+          id: e.id!,
+          source: e.source!,
+          target: e.target!,
+          label: e.label ?? null,
+        }));
+
+      const { nodes: laid, edges: laidEdges } = layoutGraph(rawNodes, rawEdges);
+      setNodes(laid);
+      setEdges(laidEdges);
+      setNodeTree({ nodes: rawNodes, edges: rawEdges });
+
+      // If AI picked tech stack, save it
+      if (techStackMode === "ai" && Array.isArray(parsed.techStack)) {
+        setTechStack(
+          parsed.techStack
+            .filter((t): t is NonNullable<typeof t> => t != null)
+            .map((t) => ({
+              category: String(t.category ?? ""),
+              name: String(t.name ?? ""),
+              reason: String(t.reason ?? ""),
+            })),
+        );
+      }
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : String(err));
+    } finally {
+      setIsLoading(false);
     }
-  }, [nodeTree, setNodes, setEdges]);
+  }, [
+    abstractIdea,
+    answers,
+    techStack,
+    techStackMode,
+    scale,
+    setNodeTree,
+    setTechStack,
+    setNodes,
+    setEdges,
+  ]);
+
+  // Auto-trigger on mount (run once via ref guard)
+  useEffect(() => {
+    if (autoFetched.current) return;
+    autoFetched.current = true;
+    fetchArchitecture();
+  }, [fetchArchitecture]);
+
+  const handleRegenerate = () => fetchArchitecture();
+
+  const nodeTree = useWizardStore((s) => s.nodeTree);
 
   return (
     <Card className="w-full max-w-4xl">
@@ -118,14 +184,24 @@ export function StepArchitecture() {
             Mindmap arsitektur yang dihasilkan AI.
           </p>
         </div>
-        {!nodeTree && (
-          <Button onClick={handleGenerate} disabled={loading}>
-            {loading ? "Menghasilkan arsitektur…" : "Generate Arsitektur"}
+        {nodeTree && !isLoading && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRegenerate}
+            disabled={isLoading}
+          >
+            Regenerate Mindmap
+          </Button>
+        )}
+        {errorMsg && !nodeTree && (
+          <Button onClick={handleRegenerate} disabled={isLoading}>
+            Coba Lagi
           </Button>
         )}
       </CardHeader>
       <CardContent>
-        {nodeTree ? (
+        {nodeTree && !isLoading && nodes.length > 0 ? (
           <div className="h-[500px] rounded-lg border">
             <ReactFlow
               nodes={nodes}
@@ -146,8 +222,21 @@ export function StepArchitecture() {
             </ReactFlow>
           </div>
         ) : (
-          <div className="flex h-[500px] items-center justify-center rounded-lg border border-dashed text-muted-foreground">
-            {loading ? "Sedang membuat diagram…" : "Klik tombol untuk generate"}
+          <div className="flex h-[500px] items-center justify-center rounded-lg border border-dashed">
+            <div className="flex flex-col items-center gap-3 text-muted-foreground">
+              {isLoading ? (
+                <>
+                  <div className="h-4 w-48 animate-pulse rounded bg-muted" />
+                  <div className="h-4 w-36 animate-pulse rounded bg-muted" />
+                  <div className="h-4 w-44 animate-pulse rounded bg-muted" />
+                  <p className="text-sm mt-2">Sedang membuat diagram…</p>
+                </>
+              ) : errorMsg ? (
+                <p className="text-sm text-destructive">{errorMsg}</p>
+              ) : (
+                <p>Menyiapkan arsitektur…</p>
+              )}
+            </div>
           </div>
         )}
 
@@ -155,7 +244,7 @@ export function StepArchitecture() {
           <Button variant="outline" onClick={prevStep}>
             ← Kembali
           </Button>
-          {nodeTree && (
+          {nodeTree && !isLoading && (
             <Button onClick={() => useWizardStore.getState().nextStep()}>
               Lanjut →
             </Button>

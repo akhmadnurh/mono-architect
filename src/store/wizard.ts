@@ -4,7 +4,7 @@ import type {
   ProjectAnswer,
   ProjectNodeTree,
 } from "@/types/project";
-import type { TechStackItem } from "@/types/project";
+import type { TechStackItem, TechStackMode } from "@/types/project";
 
 export type WizardStep = 1 | 2 | 3 | 4 | 5;
 
@@ -15,6 +15,7 @@ interface WizardState {
   scale: ProjectScale | "";
   answers: ProjectAnswer[];
   techStack: TechStackItem[];
+  techStackMode: TechStackMode | "";
   nodeTree: ProjectNodeTree | null;
 
   setStep: (step: WizardStep) => void;
@@ -25,6 +26,7 @@ interface WizardState {
   setScale: (scale: ProjectScale) => void;
   setAnswers: (answers: ProjectAnswer[]) => void;
   setTechStack: (stack: TechStackItem[]) => void;
+  setTechStackMode: (mode: TechStackMode | "") => void;
   setNodeTree: (tree: ProjectNodeTree) => void;
   reset: () => void;
 }
@@ -39,6 +41,7 @@ const INITIAL: Omit<
   | "setScale"
   | "setAnswers"
   | "setTechStack"
+  | "setTechStackMode"
   | "setNodeTree"
   | "reset"
 > = {
@@ -48,6 +51,7 @@ const INITIAL: Omit<
   scale: "",
   answers: [],
   techStack: [],
+  techStackMode: "",
   nodeTree: null,
 };
 
@@ -62,6 +66,7 @@ export const useWizardStore = create<WizardState>((set) => ({
   setScale: (scale) => set({ scale }),
   setAnswers: (answers) => set({ answers }),
   setTechStack: (techStack) => set({ techStack }),
+  setTechStackMode: (techStackMode) => set({ techStackMode }),
   setNodeTree: (nodeTree) => set({ nodeTree }),
   reset: () => set(INITIAL),
 }));
