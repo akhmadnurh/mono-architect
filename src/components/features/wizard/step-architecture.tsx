@@ -211,6 +211,22 @@ export function StepArchitecture() {
               fitView
               attributionPosition="bottom-left"
             >
+              {/* Edge gradient definition */}
+              <svg style={{ position: "absolute", width: 0, height: 0 }}>
+                <defs>
+                  <linearGradient
+                    id="edge-gradient"
+                    x1="0%"
+                    y1="0%"
+                    x2="100%"
+                    y2="0%"
+                  >
+                    <stop offset="0%" stopColor="#06b6d4" stopOpacity={0.6} />
+                    <stop offset="50%" stopColor="#6366f1" stopOpacity={0.8} />
+                    <stop offset="100%" stopColor="#a855f7" stopOpacity={0.6} />
+                  </linearGradient>
+                </defs>
+              </svg>
               <Background gap={16} size={1} />
               <Controls />
               <MiniMap

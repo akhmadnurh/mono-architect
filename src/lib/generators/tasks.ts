@@ -34,7 +34,27 @@ function inferInfraFiles(category: string, name: string): string[] {
 }
 
 // Feature-node file targets
+const INFRA_KEYWORDS = [
+  "infra",
+  "deploy",
+  "ci/cd",
+  "docker",
+  "vercel",
+  "container",
+  "hosting",
+];
 function inferFeatureFiles(label: string): string[] {
+  const lower = label.toLowerCase();
+  // Redirect infra-related nodes away from src/app/.../page.tsx
+  if (INFRA_KEYWORDS.some((kw) => lower.includes(kw))) {
+    if (lower.includes("docker") || lower.includes("container")) {
+      return ["Dockerfile", "docker-compose.yml"];
+    }
+    if (lower.includes("vercel") || lower.includes("hosting")) {
+      return ["vercel.json", "README.md"];
+    }
+    return ["Dockerfile", "docker-compose.yml", "README.md"];
+  }
   const slug = label
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
@@ -152,9 +172,12 @@ export function generateTASKS(input: TASKSInput): string {
 
   // --- Feature tasks from node tree ---
   if (nodeTree) {
-    const features = nodeTree.nodes.filter(
-      (n) => n.type === "feature" || n.type === "root",
-    );
+    const features = nodeTree.nodes.filter((n) => {
+      if (n.type !== "feature" && n.type !== "root") return false;
+      const label = ((n.data?.label as string) ?? "").toLowerCase();
+      // Skip infra-deploy nodes masquerading as features
+      return !INFRA_KEYWORDS.some((kw) => label.includes(kw));
+    });
 
     lines.push("## Feature Tasks", "");
     let featureIdx = 1;

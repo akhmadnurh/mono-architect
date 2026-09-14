@@ -3,6 +3,7 @@
 import { useState } from "react";
 import JSZip from "jszip";
 import { saveAs } from "file-saver";
+import confetti from "canvas-confetti";
 import { Download, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -29,6 +30,9 @@ export function StepExport() {
         .replace(/[^a-z0-9]+/g, "-")
         .replace(/^-|-$/g, "");
       saveAs(blob, `${slug || "project"}-bundle.zip`);
+
+      // Fire confetti on successful export
+      confetti({ particleCount: 120, spread: 70, origin: { y: 0.7 } });
     } finally {
       setBusy(false);
     }

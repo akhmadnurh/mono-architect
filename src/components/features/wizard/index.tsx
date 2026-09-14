@@ -1,5 +1,5 @@
 "use client";
-
+import { AnimatePresence, motion } from "framer-motion";
 import { useWizardStore, type WizardStep } from "@/store/wizard";
 import { StepIdea } from "./step-idea";
 import { StepQuestions } from "./step-questions";
@@ -72,11 +72,21 @@ export function Wizard() {
 
   return (
     <div className="flex flex-1 flex-col items-center gap-6 px-4 py-8">
-      <div className="w-full max-w-2xl">
+      <div className="w-full max-w-2xl rounded-2xl border border-white/10 bg-slate-900/60 p-6 shadow-2xl backdrop-blur-xl">
         <ProgressBar currentStep={step} />
-      </div>
 
-      <StepContent step={step} />
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={step}
+            initial={{ opacity: 0, y: 15, filter: "blur(4px)" }}
+            animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+            exit={{ opacity: 0, y: -10, filter: "blur(4px)" }}
+            transition={{ duration: 0.3, ease: "easeOut" }}
+          >
+            <StepContent step={step} />
+          </motion.div>
+        </AnimatePresence>
+      </div>
 
       {step > 1 && step < 5 && (
         <div className="flex gap-3">
