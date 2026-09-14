@@ -120,21 +120,71 @@ export function generateAGENTS(input: AGENTSInput): string {
   );
   lines.push("");
 
-  // --- Database Workflow ---
-  if (techStack.some((t) => t.category === "orm" && t.name === "Prisma")) {
-    lines.push("## Database Workflow", "");
+  // --- DB Schema Handling Rules ---
+  const hasORM = techStack.some(
+    (t) => t.category === "orm" || t.category === "database",
+  );
+  if (hasORM) {
+    const ormName =
+      techStack.find((t) => t.category === "orm")?.name ??
+      techStack.find((t) => t.category === "database")?.name ??
+      "Prisma";
+    lines.push(`## Database Schema Rules (${ormName})`);
     lines.push("");
     lines.push("When modifying `prisma/schema.prisma`:");
     lines.push("");
-    lines.push("1. Edit `prisma/schema.prisma`");
-    lines.push("2. Run `npx prisma db push` to sync schema to database");
-    lines.push("3. Run `npx prisma generate` to regenerate the client");
-    lines.push("4. Update any affected code");
+    lines.push(
+      "1. Edit `prisma/schema.prisma` — this is the single source of truth.",
+    );
+    lines.push("2. Run `npx prisma db push` to sync schema to database.");
+    lines.push("3. Run `npx prisma generate` to regenerate the client.");
+    lines.push(
+      "4. Never hand-edit migration files; use `prisma migrate dev` for production.",
+    );
+    lines.push(
+      "5. All model fields must have explicit types; never use `Any` or `Json` unless justified.",
+    );
+    lines.push("6. Foreign key relations must define `onDelete` behavior.");
+    lines.push("7. Run `pnpm lint` and `pnpm test` after every schema change.");
+    lines.push("");
+  }
+
+  // --- Split-Stack Rules ---
+  const hasSplitStack = (() => {
+    const fe = techStack.some((t) => t.category === "frontend");
+    const be = techStack.some((t) => t.category === "backend");
+    const feName = techStack.find((t) => t.category === "frontend")?.name;
+    const beName = techStack.find((t) => t.category === "backend")?.name;
+    return fe && be && feName !== beName;
+  })();
+
+  if (hasSplitStack) {
+    lines.push("## Split-Stack Rules");
+    lines.push("");
+    lines.push(
+      "This project has a split-stack architecture (different frontend and backend frameworks).",
+    );
+    lines.push("");
+    lines.push(
+      "- **Frontend code** goes in `apps/frontend/` (or `frontend/` in monorepo).",
+    );
+    lines.push(
+      "- **Backend code** goes in `apps/backend/` (or `backend/` in monorepo).",
+    );
+    lines.push(
+      "- **Shared code** (types, utilities) goes in `packages/shared/`.",
+    );
+    lines.push(
+      "- Never import directly from the other stack's `src/` — use the shared package.",
+    );
+    lines.push(
+      "- API contracts between stacks must be defined as shared TypeScript interfaces.",
+    );
     lines.push("");
   }
 
   // --- General Workflow ---
-  lines.push("## Workflow", "");
+  lines.push("## Workflow");
   lines.push("");
   lines.push("For each task in `TASKS.md`:");
   lines.push("");

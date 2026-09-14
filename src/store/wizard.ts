@@ -24,6 +24,9 @@ interface WizardState {
   projectId: string | null;
   saveStatus: SaveStatus;
 
+  // Q&A multi-round
+  qaRound: number;
+
   setStep: (step: WizardStep) => void;
   nextStep: () => void;
   prevStep: () => void;
@@ -35,6 +38,7 @@ interface WizardState {
   setTechStackMode: (mode: TechStackMode | "") => void;
   setNodeTree: (tree: ProjectNodeTree) => void;
   setProjectId: (id: string) => void;
+  setQaRound: (round: number) => void;
   loadFromProject: (project: {
     id: string;
     title: string;
@@ -62,6 +66,7 @@ const INITIAL: Omit<
   | "setTechStackMode"
   | "setNodeTree"
   | "setProjectId"
+  | "setQaRound"
   | "loadFromProject"
   | "reset"
   | "projectId"
@@ -75,6 +80,7 @@ const INITIAL: Omit<
   techStack: [],
   techStackMode: "",
   nodeTree: null,
+  qaRound: 0,
 };
 
 // Debounce auto-save
@@ -186,6 +192,7 @@ export const useWizardStore = create<WizardState>((set) => ({
     scheduleSave();
   },
   setProjectId: (projectId) => set({ projectId }),
+  setQaRound: (qaRound) => set({ qaRound }),
   loadFromProject: (project) =>
     set({
       projectId: project.id,

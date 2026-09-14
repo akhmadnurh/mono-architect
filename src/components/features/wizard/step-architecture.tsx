@@ -3,11 +3,13 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import {
   ReactFlow,
+  ReactFlowProvider,
   Background,
   Controls,
   MiniMap,
   useNodesState,
   useEdgesState,
+  useReactFlow,
   type Node,
   type Edge,
 } from "@xyflow/react";
@@ -15,8 +17,22 @@ import "@xyflow/react/dist/style.css";
 import { Button } from "@/components/ui/button";
 import { useWizardStore } from "@/store/wizard";
 import { layoutGraph } from "@/lib/dagre-layout";
+import { Maximize2 } from "lucide-react";
 
-export function StepArchitecture() {
+function FitViewButton() {
+  const { fitView } = useReactFlow();
+  return (
+    <button
+      onClick={() => fitView({ padding: 0.2 })}
+      className="absolute right-3 top-3 z-10 flex h-8 w-8 items-center justify-center rounded-lg border border-slate-800 bg-slate-900/90 text-slate-300 backdrop-blur transition-colors hover:bg-slate-800"
+      title="Fit View"
+    >
+      <Maximize2 className="h-4 w-4" />
+    </button>
+  );
+}
+
+export function StepArchitecture({ embedded = false }: { embedded?: boolean }) {
   const {
     abstractIdea,
     answers,
@@ -196,65 +212,72 @@ export function StepArchitecture() {
             Mindmap arsitektur yang dihasilkan AI.
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          {nodeTree && !isLoading && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleRegenerate}
-              disabled={isLoading}
-            >
-              Regenerate Mindmap
-            </Button>
-          )}
-          {errorMsg && !nodeTree && (
-            <Button onClick={handleRegenerate} disabled={isLoading}>
-              Coba Lagi
-            </Button>
-          )}
-          {nodeTree && !isLoading && (
-            <Button onClick={() => useWizardStore.getState().nextStep()}>
-              Lanjut →
-            </Button>
-          )}
-        </div>
+        {!embedded && (
+          <div className="flex items-center gap-2">
+            {nodeTree && !isLoading && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleRegenerate}
+                disabled={isLoading}
+              >
+                Regenerate Mindmap
+              </Button>
+            )}
+            {errorMsg && !nodeTree && (
+              <Button onClick={handleRegenerate} disabled={isLoading}>
+                Coba Lagi
+              </Button>
+            )}
+            {nodeTree && !isLoading && (
+              <Button onClick={() => useWizardStore.getState().nextStep()}>
+                Lanjut →
+              </Button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* ReactFlow canvas fills remaining space */}
       <div className="flex-1 overflow-hidden">
         {nodeTree && !isLoading && nodes.length > 0 ? (
-          <ReactFlow
-            nodes={nodes}
-            edges={edges}
-            onNodesChange={onNodesChange}
-            onEdgesChange={onEdgesChange}
-            fitView
-            attributionPosition="bottom-left"
-          >
-            <svg style={{ position: "absolute", width: 0, height: 0 }}>
-              <defs>
-                <linearGradient
-                  id="edge-gradient"
-                  x1="0%"
-                  y1="0%"
-                  x2="100%"
-                  y2="0%"
-                >
-                  <stop offset="0%" stopColor="#06b6d4" stopOpacity={0.6} />
-                  <stop offset="50%" stopColor="#6366f1" stopOpacity={0.8} />
-                  <stop offset="100%" stopColor="#a855f7" stopOpacity={0.6} />
-                </linearGradient>
-              </defs>
-            </svg>
-            <Background gap={16} size={1} />
-            <Controls />
-            <MiniMap
-              nodeColor={(n) => {
-                const bg = n.style?.background;
-                return typeof bg === "string" ? bg : "#94a3b8";
-              }}
-            />
-          </ReactFlow>
+          <ReactFlowProvider>
+            <ReactFlow
+              nodes={nodes}
+              edges={edges}
+              onNodesChange={onNodesChange}
+              onEdgesChange={onEdgesChange}
+              fitView
+              attributionPosition="bottom-left"
+            >
+              <svg style={{ position: "absolute", width: 0, height: 0 }}>
+                <defs>
+                  <linearGradient
+                    id="edge-gradient"
+                    x1="0%"
+                    y1="0%"
+                    x2="100%"
+                    y2="0%"
+                  >
+                    <stop offset="0%" stopColor="#06b6d4" stopOpacity={0.6} />
+                    <stop offset="50%" stopColor="#6366f1" stopOpacity={0.8} />
+                    <stop offset="100%" stopColor="#a855f7" stopOpacity={0.6} />
+                  </linearGradient>
+                </defs>
+              </svg>
+              <Background gap={16} size={1} />
+              <div className="react-flow__controls-wrapper">
+                <Controls className="react-flow__controls-dark" />
+              </div>
+              <FitViewButton />
+              <MiniMap
+                nodeColor={(n) => {
+                  const bg = n.style?.background;
+                  return typeof bg === "string" ? bg : "#94a3b8";
+                }}
+              />
+            </ReactFlow>
+          </ReactFlowProvider>
         ) : (
           <div className="flex h-full items-center justify-center">
             <div className="flex flex-col items-center gap-3 text-white/40">

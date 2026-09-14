@@ -103,7 +103,13 @@ function TopBar({ currentStep }: { currentStep: WizardStep }) {
   );
 }
 
-function StepContent({ step }: { step: WizardStep }) {
+function StepContent({
+  step,
+  embedded,
+}: {
+  step: WizardStep;
+  embedded?: boolean;
+}) {
   switch (step) {
     case 1:
       return <StepIdea />;
@@ -112,7 +118,7 @@ function StepContent({ step }: { step: WizardStep }) {
     case 3:
       return <StepTechStack />;
     case 4:
-      return <StepArchitecture />;
+      return <StepArchitecture embedded={embedded} />;
     case 5:
       return <StepExport />;
   }
@@ -137,7 +143,7 @@ export function Wizard({ embedded = false }: { embedded?: boolean }) {
             transition={{ duration: 0.3, ease: "easeOut" }}
             className={`h-full w-full ${isFullBleed ? "" : "flex items-center justify-center overflow-y-auto p-6"}`}
           >
-            <StepContent step={step} />
+            <StepContent step={step} embedded={embedded} />
           </motion.div>
         </AnimatePresence>
       </div>

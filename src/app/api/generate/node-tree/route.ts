@@ -2,9 +2,7 @@ import { streamText, createTextStreamResponse, toTextStream } from "ai";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import type { ProjectScale, TechStackItem } from "@/types/project";
 
-const AI_BASE_URL = process.env.AI_BASE_URL || "";
-const AI_API_KEY = process.env.AI_API_KEY || "";
-const MODEL_ID = process.env.AI_MODEL || "openai/gpt-4o-mini";
+import { AI_BASE_URL, AI_API_KEY, MODEL_ID } from "@/lib/ai/config";
 
 const provider = createOpenAICompatible({
   name: "mono",

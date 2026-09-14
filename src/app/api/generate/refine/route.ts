@@ -2,9 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
-const AI_BASE_URL = process.env.AI_BASE_URL || "";
-const AI_API_KEY = process.env.AI_API_KEY || "";
-const MODEL_ID = process.env.AI_MODEL || "openai/gpt-4o-mini";
+import { AI_BASE_URL, AI_API_KEY, MODEL_ID } from "@/lib/ai/config";
 
 interface RefineRequest {
   projectId: string;

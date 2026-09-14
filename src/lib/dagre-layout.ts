@@ -16,7 +16,7 @@ export function layoutGraph(
     target: string;
     label?: string | null;
   }[],
-  direction: "LR" | "TB" = "TB",
+  direction: "LR" | "TB" = "LR",
 ): { nodes: Node[]; edges: Edge[] } {
   const g = new dagre.graphlib.Graph();
   g.setGraph({ rankdir: direction, nodesep: 60, ranksep: 80 });

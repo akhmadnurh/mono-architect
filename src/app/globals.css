@@ -128,3 +128,24 @@
     @apply font-sans;
   }
 }
+
+/* React Flow Controls dark mode */
+.react-flow__controls-dark {
+  background: rgba(15, 23, 42, 0.9) !important;
+  backdrop-filter: blur(8px);
+  border: 1px solid rgb(30, 41, 59) !important;
+  border-radius: 0.5rem !important;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.3);
+}
+.react-flow__controls-dark button {
+  background: transparent !important;
+  border-color: rgb(30, 41, 59) !important;
+  color: rgb(203, 213, 225) !important;
+  fill: rgb(203, 213, 225) !important;
+}
+.react-flow__controls-dark button:hover {
+  background: rgb(30, 41, 59) !important;
+}
+.react-flow__controls-dark button svg {
+  fill: rgb(203, 213, 225) !important;
+}

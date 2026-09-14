@@ -46,9 +46,7 @@ type PreviewTab =
   | "be-agents";
 
 export function StudioClient({ project }: StudioPageProps) {
-  const [view, setView] = useState<"mindmap" | "preview">(
-    project.currentStep >= 5 ? "preview" : "mindmap",
-  );
+  const [view, setView] = useState<"mindmap" | "preview">("mindmap");
   const [previewTab, setPreviewTab] = useState<PreviewTab>("prd");
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
@@ -194,7 +192,7 @@ export function StudioClient({ project }: StudioPageProps) {
               {previewTab === "tasks" ||
               previewTab === "fe-tasks" ||
               previewTab === "be-tasks" ? (
-                <TaskKanbanBoard content={previewContent[previewTab]} />
+                <TaskKanbanBoard key={previewTab} content={previewContent[previewTab]} />
               ) : (
                 <PrdEditor content={previewContent[previewTab]} />
               )}

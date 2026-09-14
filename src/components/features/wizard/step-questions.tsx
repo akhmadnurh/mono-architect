@@ -10,38 +10,56 @@ import type { Question } from "@/lib/ai-schemas";
 import type { ProjectAnswer } from "@/types/project";
 
 export function StepQuestions() {
-  const { abstractIdea, answers, setAnswers, nextStep, prevStep } =
-    useWizardStore();
+  const {
+    abstractIdea,
+    answers,
+    setAnswers,
+    qaRound,
+    setQaRound,
+    nextStep,
+    prevStep,
+  } = useWizardStore();
   const [questions, setQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const autoFetched = useRef(false);
+  const MAX_ROUNDS = 3;
   const [values, setValues] = useState<Record<string, string>>(() => {
     const map: Record<string, string> = {};
     for (const a of answers) map[a.questionId] = String(a.value);
     return map;
   });
 
-  const handleGenerate = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/generate/questions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ abstractIdea }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Unknown error");
-      setQuestions(data.questions);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.error("Failed to generate questions:", msg);
-      setError(msg);
-    } finally {
-      setLoading(false);
-    }
-  }, [abstractIdea]);
+  const handleGenerate = useCallback(
+    async (
+      previousAnswers?: Array<{ question: string; value: string | string[] }>,
+    ) => {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await fetch("/api/generate/questions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ abstractIdea, previousAnswers }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error ?? "Unknown error");
+        if (previousAnswers && previousAnswers.length > 0) {
+          // Follow-up round: append new questions
+          setQuestions((prev) => [...prev, ...data.questions]);
+        } else {
+          setQuestions(data.questions);
+        }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error("Failed to generate questions:", msg);
+        setError(msg);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [abstractIdea],
+  );
 
   // Auto-trigger: fetch on mount when questions are empty
   // State guard: if answers already exist (navigating back), restore from store
@@ -70,9 +88,29 @@ export function StepQuestions() {
     nextStep();
   };
 
+  const handleAskMore = () => {
+    // Save current answers, then fetch follow-up questions
+    const mapped: ProjectAnswer[] = questions.map((q) => ({
+      questionId: q.questionId,
+      question: q.question,
+      value: values[q.questionId] ?? "",
+    }));
+    setAnswers(mapped);
+    setQaRound(qaRound + 1);
+
+    // Build previous answers for context
+    const previousAnswers = mapped.map((a) => ({
+      question: a.question ?? "",
+      value: a.value,
+    }));
+    handleGenerate(previousAnswers);
+  };
+
   const allAnswered =
     questions.length > 0 &&
     questions.every((q) => (values[q.questionId] ?? "").trim().length > 0);
+
+  const canAskMore = qaRound < MAX_ROUNDS - 1 && allAnswered && !loading;
 
   return (
     <Card className="w-full max-w-2xl">
@@ -112,7 +150,9 @@ export function StepQuestions() {
         )}
         {questions.length === 0 && error && (
           <Button
-            onClick={handleGenerate}
+            onClick={() => {
+              void handleGenerate();
+            }}
             disabled={loading}
             className="w-full"
           >
@@ -163,9 +203,21 @@ export function StepQuestions() {
           <Button variant="outline" onClick={prevStep}>
             ← Kembali
           </Button>
-          <Button onClick={handleProceed} disabled={!allAnswered}>
-            Lanjut →
-          </Button>
+          <div className="flex gap-2">
+            {canAskMore && (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  void handleAskMore();
+                }}
+              >
+                {loading ? "Menghasilkan…" : "Tanya Lagi…"}
+              </Button>
+            )}
+            <Button onClick={handleProceed} disabled={!allAnswered}>
+              Lanjut →
+            </Button>
+          </div>
         </div>
       </CardContent>
     </Card>
