@@ -36,20 +36,56 @@ export function generateAGENTS(input: AGENTSInput): string {
   lines.push("## Folder Structure", "");
   lines.push("```");
   const name = slugify(title);
-  lines.push(`${name}/`);
-  lines.push("├── src/");
-  lines.push("│   ├── app/          # Next.js App Router pages and API routes");
-  lines.push("│   ├── components/   # Reusable UI components");
-  lines.push("│   │   └── ui/       # Base UI primitives (shadcn)");
+  const hasFrontend = techStack.some((t) => t.category === "frontend");
+  const backendFramework = techStack.find(
+    (t) => t.category === "backend",
+  )?.name;
+
+  if (hasFrontend) {
+    lines.push(`${name}/`);
+    lines.push("├── src/");
+    lines.push(
+      "│   ├── app/          # Next.js App Router pages and API routes",
+    );
+    lines.push("│   ├── components/   # Reusable UI components");
+    lines.push("│   │   └── ui/       # Base UI primitives (shadcn)");
+  } else if (backendFramework === "NestJS") {
+    lines.push(`${name}/`);
+    lines.push("├── src/");
+    lines.push(
+      "│   ├── modules/      # Feature modules (controller + service)",
+    );
+    lines.push("│   ├── main.ts       # Application entry point");
+    lines.push("│   └── common/       # Shared decorators, guards, pipes");
+  } else if (backendFramework === "Express" || backendFramework === "Hono") {
+    lines.push(`${name}/`);
+    lines.push("├── src/");
+    lines.push("│   ├── routes/       # API route handlers");
+    lines.push("│   ├── controllers/  # Request/response logic");
+    lines.push("│   ├── middleware/    # Custom middleware");
+  } else {
+    lines.push(`${name}/`);
+    lines.push("├── src/");
+    lines.push("│   ├── app/          # Application pages and API routes");
+    lines.push("│   ├── components/   # Reusable UI components");
+  }
 
   if (techStack.some((t) => t.category === "orm" && t.name === "Prisma")) {
-    lines.push("│   └── lib/          # Shared utilities, prisma singleton");
+    if (hasFrontend) {
+      lines.push("│   └── lib/          # Shared utilities, prisma singleton");
+    } else {
+      lines.push("│   └── lib/          # Shared utilities, prisma singleton");
+    }
     lines.push("├── prisma/");
     lines.push("│   └── schema.prisma # Database schema (source of truth)");
   } else if (
     techStack.some((t) => t.category === "orm" && t.name === "Drizzle")
   ) {
-    lines.push("│   └── lib/          # Shared utilities, db client");
+    if (hasFrontend) {
+      lines.push("│   └── lib/          # Shared utilities, db client");
+    } else {
+      lines.push("│   └── lib/          # Shared utilities, db client");
+    }
     lines.push("├── drizzle/          # Migration files");
   } else {
     lines.push("│   └── lib/          # Shared utilities");

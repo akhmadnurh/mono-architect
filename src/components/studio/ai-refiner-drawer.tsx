@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Send, X, Sparkles, Loader2, PanelRightOpen } from "lucide-react";
+import { Send, X, Sparkles, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "cn";
 
@@ -87,19 +87,7 @@ export function AiRefinerDrawer({
     }
   };
 
-  if (!open) {
-    return (
-      <button
-        onClick={() => onRefined("")} // toggle via parent
-        className={cn(
-          "fixed right-4 top-1/2 z-50 -translate-y-1/2 rounded-l-xl border border-r-0 border-white/10 bg-indigo-500/20 p-2.5 text-indigo-300 backdrop-blur-md transition-colors hover:bg-indigo-500/30",
-        )}
-        title="AI Refiner"
-      >
-        <PanelRightOpen className="h-4 w-4" />
-      </button>
-    );
-  }
+  if (!open) return null;
 
   return (
     <div className="flex h-full w-80 flex-col border-l border-white/10 bg-slate-950/90 backdrop-blur-xl">

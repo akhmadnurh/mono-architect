@@ -43,7 +43,10 @@ const INFRA_KEYWORDS = [
   "container",
   "hosting",
 ];
-function inferFeatureFiles(label: string): string[] {
+function inferFeatureFiles(
+  label: string,
+  techStack: TechStackItem[],
+): string[] {
   const lower = label.toLowerCase();
   // Redirect infra-related nodes away from src/app/.../page.tsx
   if (INFRA_KEYWORDS.some((kw) => lower.includes(kw))) {
@@ -59,6 +62,14 @@ function inferFeatureFiles(label: string): string[] {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "");
+  // Backend-only scope: use module paths instead of frontend paths
+  const isBackend = !techStack.some((t) => t.category === "frontend");
+  if (isBackend) {
+    return [
+      `src/modules/${slug}/${slug}.controller.ts`,
+      `src/modules/${slug}/${slug}.service.ts`,
+    ];
+  }
   return [`src/app/${slug}/page.tsx`, `src/components/${slug}/`];
 }
 
@@ -184,7 +195,8 @@ export function generateTASKS(input: TASKSInput): string {
 
     for (const n of features) {
       const label = (n.data?.label as string) ?? n.id;
-      const files = n.type === "feature" ? inferFeatureFiles(label) : ["src/"];
+      const files =
+        n.type === "feature" ? inferFeatureFiles(label, techStack) : ["src/"];
       const subTasks = inferSubTasks(label, n.type);
       const acceptance = inferAcceptance(label, files);
 

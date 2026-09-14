@@ -14,8 +14,8 @@ import { Button } from "@/components/ui/button";
 interface StudioHeaderProps {
   projectTitle: string;
   projectId: string;
-  view: "mindmap" | "prd";
-  onViewChange: (view: "mindmap" | "prd") => void;
+  view: "mindmap" | "preview";
+  onViewChange: (view: "mindmap" | "preview") => void;
   onExport?: () => void;
   onToggleRefiner?: () => void;
   autoSaving?: boolean;
@@ -60,15 +60,15 @@ export function StudioHeader({
           Mindmap
         </button>
         <button
-          onClick={() => onViewChange("prd")}
+          onClick={() => onViewChange("preview")}
           className={`flex items-center gap-1.5 rounded-md px-3 py-1 text-xs font-medium transition-colors ${
-            view === "prd"
+            view === "preview"
               ? "bg-white/10 text-white"
               : "text-white/40 hover:text-white/60"
           }`}
         >
           <FileText className="h-3.5 w-3.5" />
-          PRD Editor
+          Preview
         </button>
       </div>
 

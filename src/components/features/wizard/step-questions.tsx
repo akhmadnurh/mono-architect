@@ -44,12 +44,21 @@ export function StepQuestions() {
   }, [abstractIdea]);
 
   // Auto-trigger: fetch on mount when questions are empty
+  // State guard: if answers already exist (navigating back), restore from store
   useEffect(() => {
+    if (answers.length > 0 && questions.length === 0) {
+      const restored: Question[] = answers.map((a) => ({
+        questionId: a.questionId,
+        question: a.question ?? "",
+      }));
+      setQuestions(restored);
+      return;
+    }
     if (questions.length === 0 && !loading && !autoFetched.current) {
       autoFetched.current = true;
       handleGenerate();
     }
-  }, [questions.length, loading, handleGenerate]);
+  }, [answers, questions.length, loading, handleGenerate]);
 
   const handleProceed = () => {
     const mapped: ProjectAnswer[] = questions.map((q) => ({

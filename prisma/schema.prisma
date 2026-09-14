@@ -65,16 +65,21 @@ model VerificationToken {
 }
 
 model Project {
-  id           String   @id @default(cuid())
-  userId       String?  @map("user_id")
-  title        String
-  abstractIdea String   @map("abstract_idea")
-  scale        String
-  answers      Json
-  techStack    Json     @map("tech_stack")
-  nodeTree     Json?    @map("node_tree")
-  prdContent   String?  @map("prd_content") @db.Text
-  createdAt    DateTime @default(now()) @map("created_at")
+  id            String   @id @default(cuid())
+  userId        String?  @map("user_id")
+  title         String
+  abstractIdea  String   @map("abstract_idea")
+  scale         String
+  answers       Json
+  techStack     Json     @map("tech_stack")
+  nodeTree      Json?    @map("node_tree")
+  prdContent    String?  @map("prd_content") @db.Text
+  tasksContent  String?  @map("tasks_content") @db.Text
+  agentsContent String?  @map("agents_content") @db.Text
+  currentStep   Int      @default(1) @map("current_step")
+  status        String   @default("draft")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @default(now()) @map("updated_at")
 
   user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
 

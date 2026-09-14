@@ -11,6 +11,7 @@ import {
   FileText,
   ClipboardList,
   Bot,
+  ClipboardCheck,
 } from "lucide-react";
 import {
   Dialog,
@@ -23,6 +24,7 @@ import { useWizardStore } from "@/store/wizard";
 import { generatePRD } from "@/lib/generators/prd";
 import { generateTASKS } from "@/lib/generators/tasks";
 import { generateAGENTS } from "@/lib/generators/agents";
+import { isSplitStack, filterBySide } from "@/lib/generators/split-stack";
 
 interface ExportModalProps {
   open: boolean;
@@ -31,12 +33,45 @@ interface ExportModalProps {
 
 export function ExportModal({ open, onOpenChange }: ExportModalProps) {
   const [copied, setCopied] = useState(false);
+  const [copiedFile, setCopiedFile] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
   const store = useWizardStore();
 
   const prd = generatePRD(store);
   const tasks = generateTASKS(store);
   const agents = generateAGENTS(store);
+
+  const files: Record<
+    string,
+    { icon: typeof FileText; label: string; desc: string; content: string }
+  > = {
+    "PRD.md": {
+      icon: FileText,
+      label: "PRD.md",
+      desc: "Spesifikasi proyek",
+      content: prd,
+    },
+    "TASKS.md": {
+      icon: ClipboardList,
+      label: "TASKS.md",
+      desc: "Checklist TDD",
+      content: tasks,
+    },
+    "AGENTS.md": {
+      icon: Bot,
+      label: "AGENTS.md",
+      desc: "Instruksi agent",
+      content: agents,
+    },
+  };
+
+  async function handleCopyFile(label: string) {
+    const f = files[label];
+    if (!f) return;
+    await navigator.clipboard.writeText(f.content);
+    setCopiedFile(label);
+    setTimeout(() => setCopiedFile(null), 2000);
+  }
 
   async function handleCopyPrompt() {
     const prompt = [
@@ -72,8 +107,31 @@ export function ExportModal({ open, onOpenChange }: ExportModalProps) {
     try {
       const zip = new JSZip();
       zip.file("PRD.md", prd);
-      zip.file("TASKS.md", tasks);
-      zip.file("AGENTS.md", agents);
+
+      const split = isSplitStack(store.techStack);
+      if (split) {
+        const feStack = filterBySide(store.techStack, "frontend");
+        const beStack = filterBySide(store.techStack, "backend");
+        zip.file(
+          "frontend/TASKS.md",
+          generateTASKS({ ...store, techStack: feStack }),
+        );
+        zip.file(
+          "frontend/AGENTS.md",
+          generateAGENTS({ ...store, techStack: feStack }),
+        );
+        zip.file(
+          "backend/TASKS.md",
+          generateTASKS({ ...store, techStack: beStack }),
+        );
+        zip.file(
+          "backend/AGENTS.md",
+          generateAGENTS({ ...store, techStack: beStack }),
+        );
+      } else {
+        zip.file("TASKS.md", tasks);
+        zip.file("AGENTS.md", agents);
+      }
 
       const blob = await zip.generateAsync({ type: "blob" });
       const slug = store.title
@@ -98,25 +156,24 @@ export function ExportModal({ open, onOpenChange }: ExportModalProps) {
         <div className="space-y-3">
           {/* File preview cards */}
           <div className="grid grid-cols-3 gap-2">
-            {[
-              { icon: FileText, label: "PRD.md", desc: "Spesifikasi proyek" },
-              {
-                icon: ClipboardList,
-                label: "TASKS.md",
-                desc: "Checklist TDD",
-              },
-              { icon: Bot, label: "AGENTS.md", desc: "Instruksi agent" },
-            ].map((f) => (
-              <div
+            {Object.values(files).map((f) => (
+              <button
                 key={f.label}
-                className="flex flex-col items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 p-3"
+                onClick={() => handleCopyFile(f.label)}
+                className="flex flex-col items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 p-3 transition-colors hover:border-indigo-500/40 hover:bg-white/10 cursor-pointer"
               >
-                <f.icon className="h-5 w-5 text-indigo-400" />
+                {copiedFile === f.label ? (
+                  <ClipboardCheck className="h-5 w-5 text-green-400" />
+                ) : (
+                  <f.icon className="h-5 w-5 text-indigo-400" />
+                )}
                 <span className="text-xs font-medium text-white/80">
                   {f.label}
                 </span>
-                <span className="text-[10px] text-white/40">{f.desc}</span>
-              </div>
+                <span className="text-[10px] text-white/40">
+                  {copiedFile === f.label ? "Tersalin!" : f.desc}
+                </span>
+              </button>
             ))}
           </div>
 
@@ -138,6 +195,9 @@ export function ExportModal({ open, onOpenChange }: ExportModalProps) {
                 </>
               )}
             </Button>
+            <p className="text-[10px] text-center text-white/30 -mt-1">
+              Salin Gabungan Semua Berkas (System Prompt)
+            </p>
 
             <Button
               variant="outline"

@@ -13,6 +13,8 @@ interface Project {
   title: string;
   scale: string;
   createdAt: string;
+  status: string;
+  currentStep: number;
 }
 
 async function fetchProjects(): Promise<Project[]> {
@@ -102,6 +104,16 @@ export default function DashboardPage() {
                   <span className="rounded-full bg-white/5 px-2 py-0.5">
                     {project.scale}
                   </span>
+                  {project.status === "completed" && (
+                    <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-emerald-400">
+                      Selesai
+                    </span>
+                  )}
+                  {project.status === "draft" && (
+                    <span className="rounded-full bg-white/5 px-2 py-0.5">
+                      Draft · Step {project.currentStep}
+                    </span>
+                  )}
                 </div>
               </Card>
             </Link>
