@@ -31,6 +31,13 @@ interface ExportModalProps {
   onOpenChange: (open: boolean) => void;
 }
 
+interface FileCard {
+  icon: typeof FileText;
+  label: string;
+  desc: string;
+  content: string;
+}
+
 export function ExportModal({ open, onOpenChange }: ExportModalProps) {
   const [copied, setCopied] = useState(false);
   const [copiedFile, setCopiedFile] = useState<string | null>(null);
@@ -41,32 +48,70 @@ export function ExportModal({ open, onOpenChange }: ExportModalProps) {
   const tasks = generateTASKS(store);
   const agents = generateAGENTS(store);
 
-  const files: Record<
-    string,
-    { icon: typeof FileText; label: string; desc: string; content: string }
-  > = {
-    "PRD.md": {
-      icon: FileText,
-      label: "PRD.md",
-      desc: "Spesifikasi proyek",
-      content: prd,
-    },
-    "TASKS.md": {
-      icon: ClipboardList,
-      label: "TASKS.md",
-      desc: "Checklist TDD",
-      content: tasks,
-    },
-    "AGENTS.md": {
-      icon: Bot,
-      label: "AGENTS.md",
-      desc: "Instruksi agent",
-      content: agents,
-    },
-  };
+  const split = isSplitStack(store.techStack);
+
+  // Build file cards based on split-stack status
+  const files: FileCard[] = (() => {
+    if (split) {
+      const feStack = filterBySide(store.techStack, "frontend");
+      const beStack = filterBySide(store.techStack, "backend");
+      return [
+        {
+          icon: FileText,
+          label: "PRD.md",
+          desc: "Spesifikasi proyek",
+          content: prd,
+        },
+        {
+          icon: ClipboardList,
+          label: "FE TASKS.md",
+          desc: "Frontend tasks",
+          content: generateTASKS({ ...store, techStack: feStack }),
+        },
+        {
+          icon: ClipboardList,
+          label: "BE TASKS.md",
+          desc: "Backend tasks",
+          content: generateTASKS({ ...store, techStack: beStack }),
+        },
+        {
+          icon: Bot,
+          label: "FE AGENTS.md",
+          desc: "Instruksi FE agent",
+          content: generateAGENTS({ ...store, techStack: feStack }),
+        },
+        {
+          icon: Bot,
+          label: "BE AGENTS.md",
+          desc: "Instruksi BE agent",
+          content: generateAGENTS({ ...store, techStack: beStack }),
+        },
+      ];
+    }
+    return [
+      {
+        icon: FileText,
+        label: "PRD.md",
+        desc: "Spesifikasi proyek",
+        content: prd,
+      },
+      {
+        icon: ClipboardList,
+        label: "TASKS.md",
+        desc: "Checklist TDD",
+        content: tasks,
+      },
+      {
+        icon: Bot,
+        label: "AGENTS.md",
+        desc: "Instruksi agent",
+        content: agents,
+      },
+    ];
+  })();
 
   async function handleCopyFile(label: string) {
-    const f = files[label];
+    const f = files.find((c) => c.label === label);
     if (!f) return;
     await navigator.clipboard.writeText(f.content);
     setCopiedFile(label);
@@ -74,30 +119,39 @@ export function ExportModal({ open, onOpenChange }: ExportModalProps) {
   }
 
   async function handleCopyPrompt() {
-    const prompt = [
-      "# Project Context",
-      "",
-      "## PRD",
-      prd,
-      "",
-      "---",
-      "",
-      "## TASKS",
-      tasks,
-      "",
-      "---",
-      "",
-      "## AGENTS",
-      agents,
+    const parts = ["# Project Context", "", "## PRD", prd, "", "---"];
+
+    if (split) {
+      const feStack = filterBySide(store.techStack, "frontend");
+      const beStack = filterBySide(store.techStack, "backend");
+      parts.push(
+        "",
+        "## FE TASKS",
+        generateTASKS({ ...store, techStack: feStack }),
+        "",
+        "## BE TASKS",
+        generateTASKS({ ...store, techStack: beStack }),
+        "",
+        "## FE AGENTS",
+        generateAGENTS({ ...store, techStack: feStack }),
+        "",
+        "## BE AGENTS",
+        generateAGENTS({ ...store, techStack: beStack }),
+      );
+    } else {
+      parts.push("", "## TASKS", tasks, "", "---", "", "## AGENTS", agents);
+    }
+
+    parts.push(
       "",
       "---",
       "",
       "Use the above PRD, TASKS, and AGENTS as context for this project.",
       "Follow the TASKS checklist. Respect AGENTS.md conventions.",
       "Implement features described in the PRD.",
-    ].join("\n");
+    );
 
-    await navigator.clipboard.writeText(prompt);
+    await navigator.clipboard.writeText(parts.join("\n"));
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }
@@ -108,7 +162,6 @@ export function ExportModal({ open, onOpenChange }: ExportModalProps) {
       const zip = new JSZip();
       zip.file("PRD.md", prd);
 
-      const split = isSplitStack(store.techStack);
       if (split) {
         const feStack = filterBySide(store.techStack, "frontend");
         const beStack = filterBySide(store.techStack, "backend");
@@ -150,13 +203,22 @@ export function ExportModal({ open, onOpenChange }: ExportModalProps) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg bg-slate-900 border-white/10">
         <DialogHeader>
-          <DialogTitle className="text-white/90">Export Project</DialogTitle>
+          <DialogTitle className="text-white/90">
+            Export Project{" "}
+            {split && (
+              <span className="ml-1 text-xs text-indigo-400 font-normal">
+                (Split-Stack)
+              </span>
+            )}
+          </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-3">
           {/* File preview cards */}
-          <div className="grid grid-cols-3 gap-2">
-            {Object.values(files).map((f) => (
+          <div
+            className={`grid gap-2 ${split ? "grid-cols-3 sm:grid-cols-5" : "grid-cols-3"}`}
+          >
+            {files.map((f) => (
               <button
                 key={f.label}
                 onClick={() => handleCopyFile(f.label)}

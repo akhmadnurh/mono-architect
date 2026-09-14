@@ -162,12 +162,23 @@ export function StepArchitecture() {
     setEdges,
   ]);
 
-  // Auto-trigger on mount (run once via ref guard)
+  // Load persisted nodeTree on mount; only call AI if nothing stored
   useEffect(() => {
     if (autoFetched.current) return;
     autoFetched.current = true;
+
+    const saved = useWizardStore.getState().nodeTree;
+    if (saved?.nodes?.length) {
+      const { nodes: laid, edges: laidEdges } = layoutGraph(
+        saved.nodes,
+        saved.edges,
+      );
+      setNodes(laid);
+      setEdges(laidEdges);
+      return;
+    }
     fetchArchitecture();
-  }, [fetchArchitecture]);
+  }, [fetchArchitecture, setNodes, setEdges]);
 
   const handleRegenerate = () => fetchArchitecture();
 

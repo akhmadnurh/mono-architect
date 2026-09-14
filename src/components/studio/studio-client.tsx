@@ -3,10 +3,11 @@
 import { useEffect, useState, useCallback } from "react";
 import { Wizard } from "@/components/features/wizard";
 import { StudioHeader } from "@/components/studio/studio-header";
-import { FloatingStepper } from "@/components/studio/floating-stepper";
 import { PrdEditor } from "@/components/editor/prd-editor";
 import { AiRefinerDrawer } from "@/components/studio/ai-refiner-drawer";
 import { ExportModal } from "@/components/studio/export-modal";
+import { Badge } from "@/components/ui/badge";
+import { TaskKanbanBoard } from "@/components/studio/task-kanban-board";
 import { useWizardStore } from "@/store/wizard";
 import { generatePRD } from "@/lib/generators/prd";
 import { generateTASKS } from "@/lib/generators/tasks";
@@ -156,34 +157,63 @@ export function StudioClient({ project }: StudioPageProps) {
               )}
             </div>
 
+            {/* Project Metadata Header */}
+            <div className="shrink-0 border-b border-white/10 bg-slate-950/60 px-4 py-2.5">
+              <div className="flex items-center gap-3">
+                <h2 className="truncate text-sm font-semibold text-white/90">
+                  {project.title}
+                </h2>
+                <Badge
+                  variant="secondary"
+                  className="shrink-0 text-[10px] capitalize"
+                >
+                  {project.scale}
+                </Badge>
+              </div>
+              {project.abstractIdea && (
+                <p className="mt-0.5 line-clamp-2 text-xs text-white/40">
+                  {project.abstractIdea}
+                </p>
+              )}
+              {project.techStack.length > 0 && (
+                <div className="mt-1.5 flex flex-wrap gap-1">
+                  {project.techStack.map((ts) => (
+                    <span
+                      key={ts.name}
+                      className="inline-flex items-center rounded-md bg-white/5 px-1.5 py-0.5 text-[10px] text-white/50"
+                    >
+                      {ts.name}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+
             {/* Content */}
             <div className="flex-1 overflow-auto p-4">
-              {previewTab === "prd" ? (
-                <PrdEditor
-                  projectId={project.id}
-                  initialContent={project.prdContent ?? ""}
-                  externalContent={refinedContent}
-                />
+              {previewTab === "tasks" ||
+              previewTab === "fe-tasks" ||
+              previewTab === "be-tasks" ? (
+                <TaskKanbanBoard content={previewContent[previewTab]} />
               ) : (
-                <pre className="whitespace-pre-wrap font-mono text-sm text-white/70">
-                  {previewContent[previewTab]}
-                </pre>
+                <PrdEditor content={previewContent[previewTab]} />
               )}
             </div>
           </div>
         )}
       </main>
 
-      {view === "preview" && <FloatingStepper />}
-
-      <AiRefinerDrawer
-        projectId={project.id}
-        open={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
-        onRefined={handleRefined}
-      />
-
-      <ExportModal open={exportOpen} onOpenChange={setExportOpen} />
+      {view === "preview" && (
+        <>
+          <AiRefinerDrawer
+            projectId={project.id}
+            open={drawerOpen}
+            onClose={() => setDrawerOpen(false)}
+            onRefined={handleRefined}
+          />
+          <ExportModal open={exportOpen} onOpenChange={setExportOpen} />
+        </>
+      )}
     </div>
   );
 }
