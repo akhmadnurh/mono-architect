@@ -264,7 +264,7 @@ function TaskItemRender({
       <div className="min-w-0 flex-1">
         <span
           className={cn(
-            "text-xs leading-relaxed text-white/60",
+            "text-sm leading-normal text-slate-200",
             item.checked && "text-white/30 line-through",
           )}
         >
@@ -300,7 +300,7 @@ function TaskDetailModal({
         <DialogHeader className="shrink-0 border-b border-white/10 pb-4">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <DialogTitle className="text-base font-semibold text-white/90">
+              <DialogTitle className="text-xl font-bold text-white/90">
                 <span className="mr-2 inline-flex h-5 items-center rounded bg-indigo-500/15 px-1.5 text-[10px] font-bold text-indigo-400">
                   #{task.id}
                 </span>
@@ -330,7 +330,7 @@ function TaskDetailModal({
           {/* Sections */}
           {task.sections.map((sec, si) => (
             <div key={si} className="space-y-2">
-              <h4 className="rounded-md bg-indigo-500/10 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-indigo-300">
+              <h4 className="rounded-md bg-indigo-500/10 px-2.5 py-1 text-xs font-bold tracking-wider uppercase text-purple-400 mb-2">
                 {sec.heading}
               </h4>
               <div className="space-y-1.5 pl-1">
@@ -344,7 +344,7 @@ function TaskDetailModal({
           {/* Acceptance Criteria */}
           {task.acceptanceCriteria.length > 0 && (
             <div className="space-y-2">
-              <h4 className="rounded-md bg-emerald-500/10 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-emerald-300">
+              <h4 className="rounded-md bg-emerald-500/10 px-2.5 py-1 text-xs font-bold tracking-wider uppercase text-emerald-400 mb-2">
                 Acceptance Criteria
               </h4>
               <div className="space-y-1.5 pl-1">
@@ -423,7 +423,7 @@ function TaskCard({
         <span className="shrink-0 rounded bg-indigo-500/15 px-1.5 py-0.5 text-[10px] font-bold text-indigo-400">
           #{task.id}
         </span>
-        <h3 className="min-w-0 flex-1 truncate text-sm font-semibold text-white/85">
+        <h3 className="min-w-0 flex-1 truncate text-base font-semibold text-slate-100">
           {task.title}
         </h3>
         <CopyButton text={promptText} />
@@ -435,7 +435,7 @@ function TaskCard({
           {task.targetFiles.map((f) => (
             <span
               key={f}
-              className="inline-flex items-center gap-1 rounded bg-white/5 px-1.5 py-0.5 text-[10px] text-white/40"
+              className="inline-flex items-center gap-1 rounded bg-white/5 px-1.5 py-0.5 text-xs font-mono text-white/40"
             >
               <FileCode className="h-2.5 w-2.5" />
               {f}
@@ -462,7 +462,7 @@ function TaskCard({
       <div className="mt-auto border-t border-white/5 px-3 py-2">
         <button
           onClick={onSelect}
-          className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-white/5 px-3 py-1.5 text-[11px] font-medium text-white/50 transition-colors hover:bg-white/10 hover:text-white/70"
+          className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-white/5 px-3 py-1.5 text-xs font-medium text-white/50 transition-colors hover:bg-white/10 hover:text-white/70"
         >
           <Eye className="h-3 w-3" />
           Lihat Detail Task

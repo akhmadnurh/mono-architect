@@ -87,12 +87,12 @@ export default function DashboardPage() {
             <Link key={project.id} href={`/studio/${project.id}`}>
               <Card className="group cursor-pointer border-white/10 bg-white/5 p-5 backdrop-blur-sm transition-all hover:border-indigo-500/30 hover:bg-white/[0.07]">
                 <div className="mb-3 flex items-start justify-between">
-                  <h3 className="font-medium text-white/90 group-hover:text-indigo-300 transition-colors line-clamp-1">
+                  <h3 className="text-lg font-semibold text-slate-100 group-hover:text-indigo-300 transition-colors line-clamp-1">
                     {project.title}
                   </h3>
                   <ArrowRight className="h-4 w-4 shrink-0 text-white/20 transition-transform group-hover:translate-x-0.5 group-hover:text-indigo-400" />
                 </div>
-                <div className="flex items-center gap-3 text-[11px] text-white/40">
+                <div className="flex items-center gap-3 text-xs text-slate-400">
                   <span className="inline-flex items-center gap-1">
                     <Calendar className="h-3 w-3" />
                     {new Date(project.createdAt).toLocaleDateString("id-ID", {
@@ -101,7 +101,7 @@ export default function DashboardPage() {
                       year: "numeric",
                     })}
                   </span>
-                  <span className="rounded-full bg-white/5 px-2 py-0.5">
+                  <span className="rounded-full bg-slate-900 px-2 py-0.5 font-mono text-xs">
                     {project.scale}
                   </span>
                   {project.status === "completed" && (

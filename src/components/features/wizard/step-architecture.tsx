@@ -17,7 +17,51 @@ import "@xyflow/react/dist/style.css";
 import { Button } from "@/components/ui/button";
 import { useWizardStore } from "@/store/wizard";
 import { layoutGraph } from "@/lib/dagre-layout";
-import { Maximize2 } from "lucide-react";
+import { Maximize2, Minus, Plus } from "lucide-react";
+
+/* ── Node color legend (mirrors dagre-layout.ts) ────────────────────── */
+
+const NODE_LEGEND = [
+  { label: "Root Node", color: "#0891b2" },
+  { label: "Feature Group", color: "#6366f1" },
+  { label: "Sub-Module", color: "#a855f7" },
+  { label: "Note / Constraint", color: "#f59e0b" },
+] as const;
+
+function MindmapLegend() {
+  const [collapsed, setCollapsed] = useState(false);
+
+  return (
+    <div className="absolute left-3 top-3 z-10">
+      <div className="rounded-xl border border-slate-800 bg-slate-900/80 p-3 shadow-lg backdrop-blur-md">
+        <button
+          onClick={() => setCollapsed((c) => !c)}
+          className="flex w-full items-center justify-between text-xs font-medium text-white/70"
+        >
+          <span>Legend</span>
+          {collapsed ? (
+            <Plus className="h-3.5 w-3.5 text-white/40" />
+          ) : (
+            <Minus className="h-3.5 w-3.5 text-white/40" />
+          )}
+        </button>
+        {!collapsed && (
+          <div className="mt-2 space-y-1.5">
+            {NODE_LEGEND.map((item) => (
+              <div key={item.label} className="flex items-center gap-2">
+                <span
+                  className="inline-block h-2.5 w-2.5 rounded-sm"
+                  style={{ backgroundColor: item.color }}
+                />
+                <span className="text-[11px] text-white/50">{item.label}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 function FitViewButton() {
   const { fitView } = useReactFlow();
@@ -239,9 +283,11 @@ export function StepArchitecture({ embedded = false }: { embedded?: boolean }) {
       </div>
 
       {/* ReactFlow canvas fills remaining space */}
-      <div className="flex-1 overflow-hidden">
+      <div className="relative flex-1 overflow-hidden">
         {nodeTree && !isLoading && nodes.length > 0 ? (
-          <ReactFlowProvider>
+          <>
+            <MindmapLegend />
+            <ReactFlowProvider>
             <ReactFlow
               nodes={nodes}
               edges={edges}
@@ -278,6 +324,7 @@ export function StepArchitecture({ embedded = false }: { embedded?: boolean }) {
               />
             </ReactFlow>
           </ReactFlowProvider>
+          </>
         ) : (
           <div className="flex h-full items-center justify-center">
             <div className="flex flex-col items-center gap-3 text-white/40">

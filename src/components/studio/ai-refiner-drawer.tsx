@@ -48,45 +48,45 @@ const CHAT_MD: Record<string, any> = {
     <p className="mb-2 last:mb-0">{children}</p>
   ),
   ul: ({ children }: { children: React.ReactNode }) => (
-    <ul className="mb-2 list-disc pl-4">{children}</ul>
+    <ul className="space-y-2 text-[15px] text-[#c9d1d9] ml-4 leading-relaxed list-disc">{children}</ul>
   ),
   ol: ({ children }: { children: React.ReactNode }) => (
-    <ol className="mb-2 list-decimal pl-4">{children}</ol>
+    <ol className="space-y-2 text-[15px] text-[#c9d1d9] ml-4 leading-relaxed list-decimal">{children}</ol>
   ),
   li: ({ children }: { children: React.ReactNode }) => (
-    <li className="mb-1">{children}</li>
+    <li className="leading-relaxed">{children}</li>
   ),
   strong: ({ children }: { children: React.ReactNode }) => (
-    <strong className="font-semibold text-white/80">{children}</strong>
+    <strong className="font-bold text-[#f0f6fc]">{children}</strong>
   ),
   em: ({ children }: { children: React.ReactNode }) => (
-    <em className="italic text-white/50">{children}</em>
+    <em className="italic text-[#8b949e]">{children}</em>
   ),
   code: ({ children }: { children: React.ReactNode }) => (
-    <code className="rounded bg-white/10 px-1 py-0.5 text-xs text-indigo-300">
+    <code className="font-mono text-[13px] bg-[#161b22] text-[#e6edf3] px-1.5 py-0.5 rounded border border-[#30363d]">
       {children}
     </code>
   ),
   pre: ({ children }: { children: React.ReactNode }) => (
-    <pre className="mb-2 overflow-x-auto rounded-lg bg-white/5 p-2 text-xs text-white/70">
+    <pre className="mb-2 overflow-x-auto font-mono text-[13px] bg-[#161b22] text-[#e6edf3] p-3 rounded-md border border-[#30363d] leading-normal">
       {children}
     </pre>
   ),
   h1: ({ children }: { children: React.ReactNode }) => (
-    <h1 className="mb-2 text-base font-bold text-white/90">{children}</h1>
+    <h1 className="font-sans font-bold text-[#f0f6fc] tracking-tight text-lg mb-2">{children}</h1>
   ),
   h2: ({ children }: { children: React.ReactNode }) => (
-    <h2 className="mb-2 mt-3 text-sm font-semibold text-white/85">{children}</h2>
+    <h2 className="font-sans font-bold text-[#f0f6fc] tracking-tight text-base mt-3 mb-2">{children}</h2>
   ),
   h3: ({ children }: { children: React.ReactNode }) => (
-    <h3 className="mb-1 mt-2 text-sm font-medium text-white/80">{children}</h3>
+    <h3 className="font-sans font-bold text-[#f0f6fc] tracking-tight text-sm mt-2 mb-1">{children}</h3>
   ),
   blockquote: ({ children }: { children: React.ReactNode }) => (
-    <blockquote className="mb-2 border-l-2 border-indigo-500/40 pl-3 text-xs italic text-white/50">
+    <blockquote className="mb-2 border-l-[3px] border-[#30363d] pl-3 text-[13px] italic text-[#8b949e]">
       {children}
     </blockquote>
   ),
-  hr: () => <hr className="my-3 border-white/10" />,
+  hr: () => <hr className="my-3 border-[#21262d]" />,
 };
 
 // ─── Props ─────────────────────────────────────────────────────────
@@ -296,7 +296,7 @@ export function AiRefinerDrawer({
   if (!open) return null;
 
   return (
-    <div className="flex h-full w-80 shrink-0 flex-col border-l border-white/10 bg-slate-950/90 backdrop-blur-xl">
+    <div className="flex h-full w-[480px] shrink-0 flex-col border-l border-white/10 bg-slate-950/90 backdrop-blur-xl">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-white/10 px-4 py-2.5">
         <div className="flex items-center gap-2 text-sm font-medium text-white/80">
@@ -319,10 +319,10 @@ export function AiRefinerDrawer({
               {/* Chat bubble */}
               <div
                 className={cn(
-                  "rounded-xl px-3 py-2 text-sm leading-relaxed",
+                  "rounded-xl px-3 py-2 text-[15px] leading-relaxed space-y-3",
                   msg.role === "user"
-                    ? "ml-8 bg-indigo-500/20 text-white/80"
-                    : "mr-4 border border-white/10 bg-white/5 font-sans text-slate-200",
+                    ? "ml-8 bg-[#1f6feb]/20 text-[#c9d1d9]"
+                    : "mr-4 border border-[#30363d] bg-[#161b22] font-sans text-[#c9d1d9]",
                 )}
               >
                 {msg.role === "assistant" ? (
@@ -349,7 +349,7 @@ export function AiRefinerDrawer({
                         key={pi}
                         onClick={() => handleProposalClick(p)}
                         disabled={loading}
-                        className="rounded-md border border-purple-500/30 bg-purple-900/40 px-3 py-1.5 text-left text-xs text-purple-200 transition-colors hover:bg-purple-800/60 disabled:opacity-50"
+                        className="rounded-md border border-purple-500/30 bg-purple-900/40 px-3 py-1.5 text-left text-xs font-medium text-purple-200 transition-colors hover:bg-purple-800/60 disabled:opacity-50"
                       >
                         {p.label}
                       </button>
@@ -424,7 +424,7 @@ export function AiRefinerDrawer({
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSend()}
             placeholder="Instruksi / pertanyaan..."
-            className="h-9 flex-1 rounded-lg border border-white/10 bg-white/5 px-3 text-sm text-white/80 outline-none placeholder:text-white/30 focus:border-indigo-500/50"
+            className="h-9 flex-1 rounded-lg border border-[#30363d] bg-[#0d1117] px-3 text-[15px] text-[#c9d1d9] outline-none placeholder:text-[#484f58] focus:border-[#1f6feb]"
             disabled={loading}
           />
           <Button

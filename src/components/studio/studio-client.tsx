@@ -199,7 +199,7 @@ export function StudioClient({ project }: StudioPageProps) {
               {/* Project Metadata Header */}
               <div className="shrink-0 border-b border-white/10 bg-slate-950/60 px-4 py-2.5">
                 <div className="flex items-center gap-3">
-                  <h2 className="truncate text-sm font-semibold text-white/90">
+                  <h2 className="truncate text-lg font-semibold text-slate-100">
                     {project.title}
                   </h2>
                   <Badge
@@ -210,7 +210,7 @@ export function StudioClient({ project }: StudioPageProps) {
                   </Badge>
                 </div>
                 {project.abstractIdea && (
-                  <p className="mt-0.5 line-clamp-2 text-xs text-white/40">
+                  <p className="mt-0.5 line-clamp-2 text-xs text-slate-400">
                     {project.abstractIdea}
                   </p>
                 )}
@@ -219,7 +219,7 @@ export function StudioClient({ project }: StudioPageProps) {
                     {project.techStack.map((ts) => (
                       <span
                         key={ts.name}
-                        className="inline-flex items-center rounded-md bg-white/5 px-1.5 py-0.5 text-[10px] text-white/50"
+                        className="inline-flex items-center rounded-md bg-slate-900 px-1.5 py-0.5 text-xs font-mono text-slate-400"
                       >
                         {ts.name}
                       </span>
