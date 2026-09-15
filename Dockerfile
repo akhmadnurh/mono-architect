@@ -9,8 +9,9 @@ RUN apk add --no-cache libc6-compat openssl
 COPY package.json pnpm-lock.yaml ./
 COPY prisma ./prisma
 
-# Izinkan build scripts eksplisit untuk Prisma & unrs-resolver di pnpm v10+
-RUN pnpm install --frozen-lockfile --config.onlyBuiltDependencies='["@prisma/client", "@prisma/engines", "prisma", "unrs-resolver"]'
+# Ignore build scripts selama install agar pnpm v10+ tidak error
+ENV PRISMA_SKIP_POSTINSTALL_GENERATE=1
+RUN pnpm install --frozen-lockfile --ignore-scripts
 RUN npx prisma generate
 
 # 3. Builder stage
