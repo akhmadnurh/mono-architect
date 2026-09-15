@@ -129,6 +129,26 @@
   }
 }
 
+/* Global dark scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #334155 #0f172a;
+}
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #0f172a;
+}
+::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
+
 /* React Flow Controls dark mode */
 .react-flow__controls-dark {
   background: rgba(15, 23, 42, 0.9) !important;

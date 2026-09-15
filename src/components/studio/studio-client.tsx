@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { Wizard } from "@/components/features/wizard";
 import { StudioHeader } from "@/components/studio/studio-header";
 import { PrdEditor } from "@/components/editor/prd-editor";
@@ -51,7 +51,10 @@ export function StudioClient({ project }: StudioPageProps) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [refinedContent, setRefinedContent] = useState<string | null>(null);
+  const [refinedTasksContent, setRefinedTasksContent] = useState<string | null>(null);
+  const [refinedAgentsContent, setRefinedAgentsContent] = useState<string | null>(null);
   const loadFromProject = useWizardStore((s) => s.loadFromProject);
+  const setNodeTree = useWizardStore((s) => s.setNodeTree);
   const saveStatus = useWizardStore((s) => s.saveStatus);
 
   // Hydrate wizard store from server project data
@@ -79,13 +82,43 @@ export function StudioClient({ project }: StudioPageProps) {
     loadFromProject,
   ]);
 
-  const handleRefined = useCallback((content: string) => {
-    if (content) {
-      setRefinedContent(content);
-      setPreviewTab("prd");
-      setView("preview");
-    }
-  }, []);
+  const handleRefined = useCallback(
+    (payload: {
+      prdContent?: string;
+      tasksContent?: string;
+      agentsContent?: string;
+      nodeTree?: string;
+    }) => {
+      if (payload.prdContent) {
+        setRefinedContent(payload.prdContent);
+        setPreviewTab("prd");
+        setView("preview");
+      }
+      if (payload.tasksContent) {
+        setRefinedTasksContent(payload.tasksContent);
+        if (!payload.prdContent) {
+          setPreviewTab("tasks");
+          setView("preview");
+        }
+      }
+      if (payload.agentsContent) {
+        setRefinedAgentsContent(payload.agentsContent);
+        if (!payload.prdContent && !payload.tasksContent) {
+          setPreviewTab("agents");
+          setView("preview");
+        }
+      }
+      if (payload.nodeTree) {
+        try {
+          const parsed: ProjectNodeTree = JSON.parse(payload.nodeTree);
+          setNodeTree(parsed);
+        } catch {
+          // ignore invalid JSON
+        }
+      }
+    },
+    [setNodeTree],
+  );
 
   // Generate preview content from store, falling back to DB-saved content
   const store = useWizardStore();
@@ -94,13 +127,19 @@ export function StudioClient({ project }: StudioPageProps) {
   const beStack = filterBySide(store.techStack, "backend");
   const previewContent = {
     prd: refinedContent ?? project.prdContent ?? generatePRD(store),
-    tasks: project.tasksContent ?? generateTASKS(store),
-    agents: project.agentsContent ?? generateAGENTS(store),
+    tasks: refinedTasksContent ?? project.tasksContent ?? generateTASKS(store),
+    agents: refinedAgentsContent ?? project.agentsContent ?? generateAGENTS(store),
     "fe-tasks": generateTASKS({ ...store, techStack: feStack }),
     "be-tasks": generateTASKS({ ...store, techStack: beStack }),
     "fe-agents": generateAGENTS({ ...store, techStack: feStack }),
     "be-agents": generateAGENTS({ ...store, techStack: beStack }),
   };
+
+  // Serialize nodeTree for drawer context
+  const nodeTreeJson = useMemo(
+    () => (store.nodeTree ? JSON.stringify(store.nodeTree) : ""),
+    [store.nodeTree],
+  );
 
   const tabs = split
     ? ([
@@ -128,90 +167,95 @@ export function StudioClient({ project }: StudioPageProps) {
         autoSaving={saveStatus === "saving"}
       />
 
-      <main className="relative flex-1 overflow-hidden">
-        {view === "mindmap" ? (
-          <Wizard embedded />
-        ) : (
-          <div className="flex h-full flex-col">
-            {/* Preview tabs */}
-            <div className="flex shrink-0 items-center gap-1 border-b border-white/10 bg-slate-950/80 px-4">
-              {tabs.map((tab) => (
-                <button
-                  key={tab.key}
-                  onClick={() => setPreviewTab(tab.key)}
-                  className={`px-3 py-2 text-xs font-medium transition-colors ${
-                    previewTab === tab.key
-                      ? "border-b-2 border-indigo-500 text-white/80"
-                      : "text-white/40 hover:text-white/60"
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              ))}
-              {isSplitStack(store.techStack) && (
-                <span className="ml-2 rounded-full bg-indigo-500/10 px-2 py-0.5 text-[10px] text-indigo-400">
-                  Split-Stack
-                </span>
-              )}
-            </div>
-
-            {/* Project Metadata Header */}
-            <div className="shrink-0 border-b border-white/10 bg-slate-950/60 px-4 py-2.5">
-              <div className="flex items-center gap-3">
-                <h2 className="truncate text-sm font-semibold text-white/90">
-                  {project.title}
-                </h2>
-                <Badge
-                  variant="secondary"
-                  className="shrink-0 text-[10px] capitalize"
-                >
-                  {project.scale}
-                </Badge>
+      <main className="flex flex-1 overflow-hidden">
+        {/* Main content area */}
+        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+          {view === "mindmap" ? (
+            <Wizard embedded />
+          ) : (
+            <div className="flex h-full flex-col">
+              {/* Preview tabs */}
+              <div className="flex shrink-0 items-center gap-1 border-b border-white/10 bg-slate-950/80 px-4">
+                {tabs.map((tab) => (
+                  <button
+                    key={tab.key}
+                    onClick={() => setPreviewTab(tab.key)}
+                    className={`px-3 py-2 text-xs font-medium transition-colors ${
+                      previewTab === tab.key
+                        ? "border-b-2 border-indigo-500 text-white/80"
+                        : "text-white/40 hover:text-white/60"
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+                {isSplitStack(store.techStack) && (
+                  <span className="ml-2 rounded-full bg-indigo-500/10 px-2 py-0.5 text-[10px] text-indigo-400">
+                    Split-Stack
+                  </span>
+                )}
               </div>
-              {project.abstractIdea && (
-                <p className="mt-0.5 line-clamp-2 text-xs text-white/40">
-                  {project.abstractIdea}
-                </p>
-              )}
-              {project.techStack.length > 0 && (
-                <div className="mt-1.5 flex flex-wrap gap-1">
-                  {project.techStack.map((ts) => (
-                    <span
-                      key={ts.name}
-                      className="inline-flex items-center rounded-md bg-white/5 px-1.5 py-0.5 text-[10px] text-white/50"
-                    >
-                      {ts.name}
-                    </span>
-                  ))}
-                </div>
-              )}
-            </div>
 
-            {/* Content */}
-            <div className="flex-1 overflow-auto p-4">
-              {previewTab === "tasks" ||
-              previewTab === "fe-tasks" ||
-              previewTab === "be-tasks" ? (
-                <TaskKanbanBoard key={previewTab} content={previewContent[previewTab]} />
-              ) : (
-                <PrdEditor content={previewContent[previewTab]} />
-              )}
+              {/* Project Metadata Header */}
+              <div className="shrink-0 border-b border-white/10 bg-slate-950/60 px-4 py-2.5">
+                <div className="flex items-center gap-3">
+                  <h2 className="truncate text-sm font-semibold text-white/90">
+                    {project.title}
+                  </h2>
+                  <Badge
+                    variant="secondary"
+                    className="shrink-0 text-[10px] capitalize"
+                  >
+                    {project.scale}
+                  </Badge>
+                </div>
+                {project.abstractIdea && (
+                  <p className="mt-0.5 line-clamp-2 text-xs text-white/40">
+                    {project.abstractIdea}
+                  </p>
+                )}
+                {project.techStack.length > 0 && (
+                  <div className="mt-1.5 flex flex-wrap gap-1">
+                    {project.techStack.map((ts) => (
+                      <span
+                        key={ts.name}
+                        className="inline-flex items-center rounded-md bg-white/5 px-1.5 py-0.5 text-[10px] text-white/50"
+                      >
+                        {ts.name}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Content */}
+              <div className="flex-1 overflow-auto p-4">
+                {previewTab === "tasks" ||
+                previewTab === "fe-tasks" ||
+                previewTab === "be-tasks" ? (
+                  <TaskKanbanBoard key={previewTab} content={previewContent[previewTab]} />
+                ) : (
+                  <PrdEditor content={previewContent[previewTab]} />
+                )}
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
+
+        {/* AI Refiner Drawer — always available regardless of view mode */}
+        <AiRefinerDrawer
+          projectId={project.id}
+          open={drawerOpen}
+          onClose={() => setDrawerOpen(false)}
+          onRefined={handleRefined}
+          prdContent={previewContent.prd}
+          tasksContent={previewContent.tasks}
+          agentsContent={previewContent.agents}
+          nodeTree={nodeTreeJson}
+        />
       </main>
 
-      {view === "preview" && (
-        <>
-          <AiRefinerDrawer
-            projectId={project.id}
-            open={drawerOpen}
-            onClose={() => setDrawerOpen(false)}
-            onRefined={handleRefined}
-          />
-          <ExportModal open={exportOpen} onOpenChange={setExportOpen} />
-        </>
-      )}
+      <ExportModal open={exportOpen} onOpenChange={setExportOpen} />
     </div>
   );
 }

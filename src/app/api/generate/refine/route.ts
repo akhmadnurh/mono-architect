@@ -1,21 +1,126 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-
 import { AI_BASE_URL, AI_API_KEY, MODEL_ID } from "@/lib/ai/config";
+import { generateAGENTS } from "@/lib/generators/agents";
+import { parsePrdToNodeTree } from "@/lib/parsers/prd-to-nodes";
+
+// ─── Request / Response types ──────────────────────────────────────
 
 interface RefineRequest {
   projectId: string;
   instruction: string;
+  /** "preview" = classify intent without saving; "apply" = save to DB */
+  action?: "preview" | "apply";
+  /** Full context from drawer */
+  prdContent?: string;
+  tasksContent?: string;
+  agentsContent?: string;
+  nodeTree?: string; // stringified JSON
+  /** Required when action = "apply" */
+  applyPayload?: {
+    prdContent?: string;
+    tasksContent?: string;
+  };
 }
+
+export type IntentType = "QUESTION" | "ADVISORY" | "MUTATION";
+
+export interface RefineProposal {
+  label: string;
+  actionPrompt: string;
+}
+
+interface RefineResponse {
+  intent: IntentType;
+  message: string;
+  proposals?: RefineProposal[];
+  updatedPrd?: string;
+  updatedTasks?: string;
+}
+
+// ─── POST handler ──────────────────────────────────────────────────
 
 export async function POST(req: Request) {
   const session = await auth();
   if (!session?.user)
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { projectId, instruction } = (await req.json()) as RefineRequest;
+  const body = (await req.json()) as RefineRequest;
+  const {
+    projectId,
+    instruction,
+    action = "preview",
+    prdContent: clientPrd,
+    tasksContent: clientTasks,
+    agentsContent: clientAgents,
+    nodeTree: clientNodes,
+    applyPayload,
+  } = body;
 
+  // ── Apply: save pre-reviewed content to DB + regenerate AGENTS + parse nodeTree ──
+  if (action === "apply") {
+    if (!projectId || !applyPayload) {
+      return NextResponse.json(
+        { error: "projectId and applyPayload are required for apply" },
+        { status: 400 },
+      );
+    }
+    const project = await prisma.project.findUnique({
+      where: { id: projectId },
+      select: {
+        userId: true,
+        title: true,
+        abstractIdea: true,
+        scale: true,
+        answers: true,
+        techStack: true,
+      },
+    });
+    if (!project || project.userId !== session.user.id) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+
+    const data: Record<string, unknown> = {};
+
+    // Save PRD
+    if (applyPayload.prdContent !== undefined) {
+      data.prdContent = applyPayload.prdContent;
+
+      // Regenerate AGENTS from updated PRD context
+      const regeneratedAgents = generateAGENTS({
+        title: project.title,
+        scale: project.scale,
+        techStack: project.techStack as Array<{
+          category: string;
+          name: string;
+          reason: string;
+        }>,
+      });
+      data.agentsContent = regeneratedAgents;
+
+      // Parse nodeTree from PRD sections 4 & 5
+      const parsedNodeTree = parsePrdToNodeTree(applyPayload.prdContent);
+      if (parsedNodeTree) {
+        data.nodeTree = parsedNodeTree;
+      }
+    }
+
+    // Save TASKS
+    if (applyPayload.tasksContent !== undefined) {
+      data.tasksContent = applyPayload.tasksContent;
+    }
+
+    await prisma.project.update({ where: { id: projectId }, data });
+
+    return NextResponse.json({
+      success: true,
+      agentsContent: data.agentsContent,
+      nodeTree: data.nodeTree,
+    });
+  }
+
+  // ── Preview: classify intent + respond ──
   if (!projectId || !instruction) {
     return NextResponse.json(
       { error: "projectId and instruction are required" },
@@ -23,36 +128,66 @@ export async function POST(req: Request) {
     );
   }
 
-  // Fetch current PRD
   const project = await prisma.project.findUnique({
     where: { id: projectId },
-    select: { prdContent: true, userId: true },
+    select: {
+      prdContent: true,
+      tasksContent: true,
+      agentsContent: true,
+      userId: true,
+    },
   });
-
   if (!project || project.userId !== session.user.id) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  const currentPrd = project.prdContent ?? "";
+  // Merge client-sent content with DB content (client takes precedence)
+  const currentPrd = clientPrd ?? project.prdContent ?? "";
+  const currentTasks = clientTasks ?? project.tasksContent ?? "";
+  const currentAgents = clientAgents ?? project.agentsContent ?? "";
 
-  // Call AI to refine the PRD
-  const systemPrompt = `You are a senior software architect and technical writer. You refine and update Product Requirement Documents (PRD).
+  const systemPrompt = `You are a senior software architect acting as an AI Refiner for a software project. You have access to the project's PRD, TASKS, AGENTS, and architecture node tree.
 
-RULES:
-- Return the COMPLETE refined PRD in markdown format.
-- Apply the user's instruction to the existing PRD.
-- Preserve all existing sections unless the instruction says to modify them.
-- Be specific and detailed in your additions.
-- Return ONLY the markdown content, no explanation or wrapping.`;
+You MUST respond with valid JSON (no markdown wrapping) matching this schema:
+{
+  "intent": "QUESTION" | "ADVISORY" | "MUTATION",
+  "message": "Your reply to the user",
+  "proposals": [{ "label": "short button text", "actionPrompt": "instruction that will be sent to AI Refiner" }],
+  "updatedPrd": "complete updated PRD (only when intent=MUTATION and PRD changes)",
+  "updatedTasks": "complete updated TASKS (only when intent=MUTATION and TASKS changes)"
+}
 
-  const userPrompt = `Current PRD:
+Intent classification rules:
+- QUESTION: User asks a factual/technical question about the project. No document changes. No proposals.
+- ADVISORY: User asks for opinion, analysis, comparison, or advice. Return analysis + 2-4 actionable proposals the user can click to execute.
+- MUTATION: User gives a direct instruction to modify documents (add, remove, change content). Generate updated documents.
+
+CRITICAL RULES:
+- NEVER respond "PRD is empty" or similar when the prdContent string provided is non-empty. The user sees their content — trust it.
+- When intent is QUESTION, omit proposals, updatedPrd, and updatedTasks.
+- When intent is ADVISORY, omit updatedPrd and updatedTasks. proposals MUST have 2-4 items.
+- When intent is MUTATION, include the COMPLETE updated document(s) — not partial diffs.
+- Preserve all existing sections unless the instruction explicitly says to modify them.
+- message should be in the same language as the user's instruction.`;
+
+  const userPrompt = `Current project context:
 ---
-${currentPrd || "(empty — create a new PRD)"}
+PRD:
+${currentPrd || "(no PRD content)"}
+---
+TASKS:
+${currentTasks || "(no TASKS content)"}
+---
+AGENTS:
+${currentAgents || "(no AGENTS content)"}
+---
+Node tree:
+${clientNodes || "(not provided)"}
 ---
 
 User instruction: ${instruction}
 
-Refine the PRD according to the instruction above. Return the complete updated PRD in markdown.`;
+Classify the intent and respond with the JSON schema.`;
 
   try {
     const res = await fetch(`${AI_BASE_URL}/chat/completions`, {
@@ -80,22 +215,47 @@ Refine the PRD according to the instruction above. Return the complete updated P
     }
 
     const data = await res.json();
-    const refinedContent: string = data.choices?.[0]?.message?.content ?? "";
+    const raw: string = data.choices?.[0]?.message?.content ?? "";
 
-    if (!refinedContent) {
+    if (!raw) {
       return NextResponse.json(
         { error: "AI returned empty response" },
         { status: 502 },
       );
     }
 
-    // Save refined PRD to database
-    await prisma.project.update({
-      where: { id: projectId },
-      data: { prdContent: refinedContent },
-    });
+    // Parse JSON — handle markdown-wrapped JSON
+    const jsonStr = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
+    let parsed: RefineResponse;
+    try {
+      parsed = JSON.parse(jsonStr) as RefineResponse;
+    } catch {
+      // Fallback: treat raw as QUESTION with the raw text as message
+      parsed = { intent: "QUESTION", message: raw };
+    }
 
-    return NextResponse.json({ content: refinedContent });
+    // Validate intent
+    const validIntents: IntentType[] = ["QUESTION", "ADVISORY", "MUTATION"];
+    if (!validIntents.includes(parsed.intent)) {
+      parsed.intent = "QUESTION";
+    }
+
+    // Build response — only include fields relevant to the intent
+    const response: Record<string, unknown> = {
+      intent: parsed.intent,
+      message: parsed.message,
+    };
+
+    if (parsed.intent === "ADVISORY" && Array.isArray(parsed.proposals)) {
+      response.proposals = parsed.proposals;
+    }
+
+    if (parsed.intent === "MUTATION") {
+      if (parsed.updatedPrd) response.updatedPrd = parsed.updatedPrd;
+      if (parsed.updatedTasks) response.updatedTasks = parsed.updatedTasks;
+    }
+
+    return NextResponse.json(response);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error("refine error:", message);
