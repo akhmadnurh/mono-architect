@@ -7,6 +7,8 @@ RUN corepack enable
 FROM base AS deps
 RUN apk add --no-cache libc6-compat openssl
 COPY package.json pnpm-lock.yaml ./
+# Copy folder prisma agar postinstall (prisma generate) menemukan schema.prisma
+COPY prisma ./prisma
 RUN pnpm install --frozen-lockfile
 
 # 3. Builder stage
